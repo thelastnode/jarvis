@@ -1,9 +1,20 @@
 #include <Servo.h>
 
+#define TOGGLE '0'
+#define LOCK   '1'
+#define UNLOCK '2'
+
+// For reading bits Wiegand style
 unsigned long output = 0;
+unsigned int bit_count = 0;
+
+// Timeout for reading from the reader
 unsigned long time_since_last_bit = 0;
-unsigned int bitsCounter = 0;
-unsigned char incomingByte = 0;
+
+// The command from the server
+unsigned char byte_in = 0;
+
+// Current door state
 unsigned char door_locked = 0;
 int servoPos = 10;
 
@@ -17,35 +28,41 @@ void setup() {
 }
 
 void loop(){
-	if (bitsCounter >= 35) {
+	if (bit_count >= 35) {
 		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
 			toggle_door();
 		Serial.print(output, HEX);
 		Serial.print(door_locked, BYTE);
-		bitsCounter = 0;
+		bit_count = 0;
 		output = 0;
 	}
 	if (Serial.available() > 0) {
-		incomingByte = Serial.read();
-		if (incomingByte == 49) {
+		byte_in = Serial.read();
+		if (byte_in == TOGGLE) {
 			toggle_door();
+		}
+		else if (byte_in == LOCK) {
+			lock_door();
+		}
+		else if (byte_in == UNLOCK) {
+			unlock_door();
 		}
 	}
 	if (millis() - time_since_last_bit > 1000) {
 		output = 0;
-		bitsCounter = 0;
+		bit_count = 0;
 	}
 }
 
 void count_one() {
 	output = (output<<1) + 1;
-	bitsCounter++;
+	bit_count++;
 	time_since_last_bit = millis();
 }
 
 void count_zero() {
 	output = (output<<1);
-	bitsCounter++;
+	bit_count++;
 	time_since_last_bit = millis();
 }
 
