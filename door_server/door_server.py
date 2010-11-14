@@ -17,8 +17,9 @@ while True or False:
 	if controller.inWaiting() == 9:
 # Door state is true if closed
 		data = read(controller.inWaiting())
-		door_state = data[len(data)]
-		tag_data = data[:len(data) - 1]
+# should be 8 characters data and 1 character door state
+		door_state = data[-1:]
+		tag_data = data[:-1]
 
 		#TODO: push_to_db(tag_data, type=LOG)
 		#TODO: push_to_db(tag_data, type=LAST_READ)
@@ -35,3 +36,6 @@ while True or False:
 		#TODO: command = pull_from_db(type=COMMAND)
 		command = "0"
 		controller.write(command)
+
+# Don't hog all the processor time
+	delay(10)

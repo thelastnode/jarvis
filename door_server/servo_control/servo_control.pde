@@ -4,6 +4,20 @@
 #define LOCK   '1'
 #define UNLOCK '2'
 
+#define BAUD 9600
+
+#define SERVO_ON_TIME 1000
+#define SERVO_RET_TIME 800
+
+#define SERVO_LOCK 9
+#define SERVO_UNLOCK 10
+
+#define SERVO_LOCK_ACT 90
+#define SERVO_LOCK_HOME 0
+
+#define SERVO_UNLOCK_ACT 0
+#define SERVO_UNLOCK_HOME 90
+
 // For reading bits Wiegand style
 unsigned long output = 0;
 unsigned int bit_count = 0;
@@ -16,39 +30,46 @@ unsigned char byte_in = 0;
 
 // Current door state
 unsigned char door_locked = 0;
-int servoPos = 10;
 
 Servo servo_lock;
 Servo servo_unlock;
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
 	attachInterrupt(1, count_one, FALLING);
 }
 
 void loop(){
 	if (bit_count >= 35) {
-		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
-			toggle_door();
+		// TODO: not hardcode passkeys
+		// if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
+			// toggle_door();
 		Serial.print(output, HEX);
 		Serial.print(door_locked, BYTE);
 		bit_count = 0;
 		output = 0;
 	}
+	// Interpret command
 	if (Serial.available() > 0) {
 		byte_in = Serial.read();
-		if (byte_in == TOGGLE) {
-			toggle_door();
-		}
-		else if (byte_in == LOCK) {
-			lock_door();
-		}
-		else if (byte_in == UNLOCK) {
-			unlock_door();
+		switch (byte_in) {
+			case TOGGLE:
+				toggle_door();
+				break;
+			case LOCK:
+				lock_door();
+				break;
+			case UNLOCK:
+				unlock_door();
+				break;
+			default:
+				break;
 		}
 	}
-	if (millis() - time_since_last_bit > 1000) {
+
+	// bit counting timeout
+	if (millis() - time_since_last_bit > 1000 && millis() - time_since_last_bit < 3000) {
 		output = 0;
 		bit_count = 0;
 	}
@@ -76,14 +97,16 @@ void toggle_door() {
 }
 
 void lock_door() {
-		servo_lock.attach(9);
-		servo_lock.write(0);
+		servo_lock.attach(SERVO_LOCK);
+		servo_lock.write(SERVO_LOCK_HOME);
 
-		servo_unlock.attach(10);
-		servo_unlock.write(0);
-		delay(1000);
-		servo_unlock.write(90);
-		delay(800);
+		servo_unlock.attach(SERVO_UNLOCK);
+
+		servo_unlock.write(SERVO_UNLOCK_ACT);
+		delay(SERVO_ON_TIME);
+
+		servo_unlock.write(SERVO_UNLOCK_HOME);
+		delay(SERVO_RET_TIME);
 
 		servo_lock.detach();
 		servo_unlock.detach();
@@ -91,14 +114,16 @@ void lock_door() {
 }
 
 void unlock_door() {
-		servo_unlock.attach(10);
-		servo_unlock.write(90);
+		servo_unlock.attach(SERVO_UNLOCK);
+		servo_unlock.write(SERVO_UNLOCK_HOME);
 
-		servo_lock.attach(9);
-		servo_lock.write(90);
-		delay(1000);
-		servo_lock.write(0);
-		delay(800);
+		servo_lock.attach(SERVO_LOCK);
+
+		servo_lock.write(SERVO_LOCK_ACT);
+		delay(SERVO_ON_TIME);
+
+		servo_lock.write(SERVO_LOCK_HOME);
+		delay(SERVO_RET_TIME);
 
 		servo_lock.detach();
 		servo_unlock.detach();
