@@ -41,7 +41,7 @@ void setup() {
 }
 
 void loop(){
-	if (bit_count >= 35) {
+	if (bit_count >= 35 && millis() - time_since_last_bit > 100) {
 		// TODO: not hardcode passkeys
 		// if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
 			// toggle_door();
@@ -67,12 +67,6 @@ void loop(){
 				break;
 		}
 	}
-
-	// bit counting timeout
-	if (millis() - time_since_last_bit > 1000 && millis() - time_since_last_bit < 3000) {
-		output = 0;
-		bit_count = 0;
-	}
 }
 
 void count_one() {
@@ -96,7 +90,7 @@ void toggle_door() {
 	}
 }
 
-void lock_door() {
+void unlock_door() {
 		servo_lock.attach(SERVO_LOCK);
 		servo_lock.write(SERVO_LOCK_HOME);
 
@@ -113,7 +107,7 @@ void lock_door() {
 		door_locked = 0;
 }
 
-void unlock_door() {
+void lock_door() {
 		servo_unlock.attach(SERVO_UNLOCK);
 		servo_unlock.write(SERVO_UNLOCK_HOME);
 
