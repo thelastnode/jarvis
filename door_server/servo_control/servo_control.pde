@@ -18,6 +18,9 @@
 #define SERVO_UNLOCK_ACT 0
 #define SERVO_UNLOCK_HOME 90
 
+#define NUM_BITS 35
+#define BIT_TIMEOUT 100
+
 // For reading bits Wiegand style
 unsigned long output = 0;
 unsigned int bit_count = 0;
@@ -41,7 +44,7 @@ void setup() {
 }
 
 void loop(){
-	if (bit_count >= 35 && millis() - time_since_last_bit > 100) {
+	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
 		// TODO: not hardcode passkeys
 		// if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
 			// toggle_door();
@@ -91,35 +94,35 @@ void toggle_door() {
 }
 
 void unlock_door() {
-		servo_lock.attach(SERVO_LOCK);
-		servo_lock.write(SERVO_LOCK_HOME);
+	servo_lock.attach(SERVO_LOCK);
+	servo_lock.write(SERVO_LOCK_HOME);
 
-		servo_unlock.attach(SERVO_UNLOCK);
+	servo_unlock.attach(SERVO_UNLOCK);
 
-		servo_unlock.write(SERVO_UNLOCK_ACT);
-		delay(SERVO_ON_TIME);
+	servo_unlock.write(SERVO_UNLOCK_ACT);
+	delay(SERVO_ON_TIME);
 
-		servo_unlock.write(SERVO_UNLOCK_HOME);
-		delay(SERVO_RET_TIME);
+	servo_unlock.write(SERVO_UNLOCK_HOME);
+	delay(SERVO_RET_TIME);
 
-		servo_lock.detach();
-		servo_unlock.detach();
-		door_locked = 0;
+	servo_lock.detach();
+	servo_unlock.detach();
+	door_locked = 0;
 }
 
 void lock_door() {
-		servo_unlock.attach(SERVO_UNLOCK);
-		servo_unlock.write(SERVO_UNLOCK_HOME);
+	servo_unlock.attach(SERVO_UNLOCK);
+	servo_unlock.write(SERVO_UNLOCK_HOME);
 
-		servo_lock.attach(SERVO_LOCK);
+	servo_lock.attach(SERVO_LOCK);
 
-		servo_lock.write(SERVO_LOCK_ACT);
-		delay(SERVO_ON_TIME);
+	servo_lock.write(SERVO_LOCK_ACT);
+	delay(SERVO_ON_TIME);
 
-		servo_lock.write(SERVO_LOCK_HOME);
-		delay(SERVO_RET_TIME);
+	servo_lock.write(SERVO_LOCK_HOME);
+	delay(SERVO_RET_TIME);
 
-		servo_lock.detach();
-		servo_unlock.detach();
-		door_locked = 1;
+	servo_lock.detach();
+	servo_unlock.detach();
+	door_locked = 1;
 }
