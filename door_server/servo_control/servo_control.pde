@@ -19,7 +19,9 @@
 #define SERVO_UNLOCK_HOME 90
 
 #define NUM_BITS 35
-#define BIT_TIMEOUT 100
+#define BIT_TIMEOUT 50
+
+#define LOCKED_INDICATOR_PIN 11
 
 // For reading bits Wiegand style
 unsigned long output = 0;
@@ -41,13 +43,15 @@ void setup() {
 	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
 	attachInterrupt(1, count_one, FALLING);
+	pinMode(LOCKED_INDICATOR_PIN, OUTPUT);
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
 }
 
 void loop(){
 	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
 		// TODO: not hardcode passkeys
-		// if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182)
-			// toggle_door();
+		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182 || output == 0x890AA27E)
+			toggle_door();
 		Serial.print(output, HEX);
 		Serial.print(door_locked, BYTE);
 		bit_count = 0;
@@ -94,6 +98,7 @@ void toggle_door() {
 }
 
 void unlock_door() {
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
 	servo_lock.attach(SERVO_LOCK);
 	servo_lock.write(SERVO_LOCK_HOME);
 
@@ -107,10 +112,12 @@ void unlock_door() {
 
 	servo_lock.detach();
 	servo_unlock.detach();
+
 	door_locked = 0;
 }
 
 void lock_door() {
+	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
 	servo_unlock.attach(SERVO_UNLOCK);
 	servo_unlock.write(SERVO_UNLOCK_HOME);
 
@@ -124,5 +131,6 @@ void lock_door() {
 
 	servo_lock.detach();
 	servo_unlock.detach();
+
 	door_locked = 1;
 }
