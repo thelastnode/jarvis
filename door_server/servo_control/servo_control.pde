@@ -24,6 +24,10 @@
 
 #define LOCKED_INDICATOR_PIN 11
 
+#define LOCK_TOGGLE_PIN 4
+
+#define MANUAL_TOGGLE_ID "MANUALOPEN"
+
 // For reading bits Wiegand style
 unsigned long output = 0;
 unsigned int bit_count = 0;
@@ -37,6 +41,12 @@ unsigned char byte_in = 0;
 // Current door state
 unsigned char door_locked = 0;
 
+// Manual door toggling
+// Debounce integrator
+unsigned char debounce_integ = 0;
+// waiting for release
+unsigned char wait_for_release = 0;
+
 Servo servo_lock;
 Servo servo_unlock;
 
@@ -44,11 +54,31 @@ void setup() {
 	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
 	attachInterrupt(1, count_one, FALLING);
+
 	pinMode(LOCKED_INDICATOR_PIN, OUTPUT);
 	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+
+	pinMode(LOCK_TOGGLE_PIN, INPUT);
 }
 
 void loop(){
+	// Toggle the door state
+	if (digitalRead(LOCK_TOGGLE_PIN)) {
+		if (debounce_integ < 10)
+		debounce_integ++;
+	} else if (debounce_integ > 0)
+		debounce_integ--;
+
+	if (debounce_integ == 10 && !wait_for_release) {
+		Serial.print(MANUAL_TOGGLE_ID);
+		Serial.print(door_locked+'0', BYTE);
+
+		toggle_door();
+		wait_for_release = 1;
+	} else if (debounce_integ == 0 && wait_for_release) {
+		wait_for_release = 0;
+	}
+	
 	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
 		// TODO: not hardcode passkeys
 		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182 || output == 0x890AA27E)
@@ -56,7 +86,7 @@ void loop(){
 		else
 			blink_invalid();
 		Serial.print(output, HEX);
-		Serial.print(door_locked, BYTE);
+		Serial.print(door_locked + '0', BYTE);
 		bit_count = 0;
 		output = 0;
 	}

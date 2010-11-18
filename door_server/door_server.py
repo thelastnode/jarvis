@@ -13,6 +13,8 @@ LOCK   = '1'
 UNLOCK = '2'
 INVALID = '3'
 
+manual_toggle_id = 'MANUALOPEN'
+
 controller = serial.Serial(interface, baud, timeout = timeout);
 
 while True or False:
@@ -23,16 +25,19 @@ while True or False:
 		door_state = data[-1:]
 		tag_data = data[:-1]
 
-		#TODO: push_to_db(tag_data, type=LOG)
-		#TODO: push_to_db(tag_data, type=LAST_READ)
-
-		#TODO: auth = in_db(tag_data, type=ACCESS_GRANTED)
-		auth = False
-		if auth:
-			controller.write(TOGGLE)
-			# TODO: push_to_db(not door_state, type=DOOR_STATE)
+		if tag_data == manual_toggle_id:
+			# TODO: push_to_db(door_state, type=DOOR_STATE)
 		else:
-			controller.write(INVALID)
+			#TODO: push_to_db(tag_data, type=LOG)
+			#TODO: push_to_db(tag_data, type=LAST_READ)
+
+			#TODO: auth = in_db(tag_data, type=ACCESS_GRANTED)
+			auth = False
+			if auth:
+				controller.write(TOGGLE)
+				# TODO: push_to_db(not door_state, type=DOOR_STATE)
+			else:
+				controller.write(INVALID)
 
 	#TODO: if db_queue_available()
 	if False:
