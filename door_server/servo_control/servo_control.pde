@@ -142,20 +142,12 @@ void lock_door() {
 }
 
 void blink_invalid() {
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
-	delay(100);
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
-	delay(100);
+	for (int x=0; x<5; x++) {
+		digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
+		delay(100);
+		digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+		delay(100);
+	}
 	if (door_locked)
 		digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
 }
