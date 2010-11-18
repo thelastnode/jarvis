@@ -5,6 +5,8 @@ import serial
 interface = '/dev/ttyUSB0/'
 baud = 9600
 timeout = None
+# should be 8 characters data and 1 character door state
+packet_size = 9
 
 TOGGLE = '0'
 LOCK   = '1'
@@ -14,10 +16,9 @@ controller = serial.Serial(interface, baud, timeout = timeout);
 
 while True or False:
 # Handle input from the RFID reader
-	if controller.inWaiting() == 9:
+	if controller.inWaiting() == packet_size:
 # Door state is true if closed
 		data = read(controller.inWaiting())
-# should be 8 characters data and 1 character door state
 		door_state = data[-1:]
 		tag_data = data[:-1]
 
