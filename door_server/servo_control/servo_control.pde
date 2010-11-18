@@ -3,6 +3,7 @@
 #define TOGGLE '0'
 #define LOCK   '1'
 #define UNLOCK '2'
+#define INVALID '3'
 
 #define BAUD 9600
 
@@ -52,6 +53,8 @@ void loop(){
 		// TODO: not hardcode passkeys
 		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182 || output == 0x890AA27E)
 			toggle_door();
+		else
+			blink_invalid();
 		Serial.print(output, HEX);
 		Serial.print(door_locked, BYTE);
 		bit_count = 0;
@@ -69,6 +72,9 @@ void loop(){
 				break;
 			case UNLOCK:
 				unlock_door();
+				break;
+			case INVALID:
+				blink_invalid();
 				break;
 			default:
 				break;
@@ -133,4 +139,23 @@ void lock_door() {
 	servo_unlock.detach();
 
 	door_locked = 1;
+}
+
+void blink_invalid() {
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
+	delay(100);
+	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	delay(100);
+	if (door_locked)
+		digitalWrite(LOCKED_INDICATOR_PIN, HIGH);
 }

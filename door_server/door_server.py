@@ -11,6 +11,7 @@ packet_size = 9
 TOGGLE = '0'
 LOCK   = '1'
 UNLOCK = '2'
+INVALID = '3'
 
 controller = serial.Serial(interface, baud, timeout = timeout);
 
@@ -30,6 +31,8 @@ while True or False:
 		if auth:
 			controller.write(TOGGLE)
 			# TODO: push_to_db(not door_state, type=DOOR_STATE)
+		else:
+			controller.write(INVALID)
 
 	#TODO: if db_queue_available()
 	if False:
