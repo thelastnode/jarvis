@@ -5,6 +5,7 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
+    (r'^door/', include('jarvis_web.door_control.urls')),
     # Example:
     # (r'^jarvis_web/', include('jarvis_web.foo.urls')),
 
