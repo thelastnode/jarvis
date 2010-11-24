@@ -3,4 +3,7 @@
 {% block title %}Door Control{% endblock %}
 
 {% block body %}
+<div id="welcome">
+    Hi, {{ user.username }}! <a href="{% url logout %}">Logout</a>
+</div>
 {% endblock %}

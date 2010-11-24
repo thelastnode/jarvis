@@ -1,2 +1,3 @@
 - add database commands to door server
 - add controls to web application
+- fix failed login to still take you to the 'next' url
