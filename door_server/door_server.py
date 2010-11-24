@@ -51,6 +51,9 @@ def main():
     while db_queue_items() > 0:
         db_dequeue_command()
 
+    # request door state
+    controller.write(REQ_STATE)
+
     while True:
         # Handle input from the RFID reader
         if controller.inWaiting() == packet_size:
