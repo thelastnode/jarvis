@@ -46,7 +46,11 @@ controller = serial.Serial(interface, baud, timeout = timeout);
 old_state = None
 
 def main():
-    while True or False:
+    # empty queue 
+    while db_queue_items() > 0:
+        db_dequeue_command()
+
+    while True:
         # Handle input from the RFID reader
         if controller.inWaiting() == packet_size:
             # Door state is true if closed
