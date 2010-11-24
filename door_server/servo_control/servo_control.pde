@@ -81,10 +81,12 @@ void loop(){
 	
 	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
 		// TODO: not hardcode passkeys
+		/*
 		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182 || output == 0x890AA27E)
 			toggle_door();
 		else
 			blink_invalid();
+		*/
 		Serial.print(output, HEX);
 		Serial.print(door_locked + '0', BYTE);
 		bit_count = 0;
