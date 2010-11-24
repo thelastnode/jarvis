@@ -1,7 +1,29 @@
 #!/usr/bin/python
 
+from time import sleep
+
+# change for appropriate database 
+import MySQLdb as db
+
 import serial
 
+# Database config
+DB = {
+    'name' : 'jarvis',
+    'user' : 'jarvis',
+    'password' : '[sddeptf',
+    'host' : 'localhost',
+    'port' : '3306',
+
+    'log_table' : 'door_control_rfidlogentry',
+    'door_state_table' : 'door_control_doorstate',
+    'user_profile_table' : 'door_control_userprofile',
+}
+
+conn = db.connect(host=DB['host'], user=DB['user'],
+                  passwd=DB['password'], db=DB['name'])
+
+# Low level config
 interface = '/dev/ttyUSB0/'
 baud = 9600
 timeout = None
@@ -15,36 +37,89 @@ INVALID = '3'
 
 manual_toggle_id = 'MANUALOPEN'
 
+# time delay for server loop in seconds (can be a float)
+TIME_DELAY = 1
+
 controller = serial.Serial(interface, baud, timeout = timeout);
 
-while True or False:
-# Handle input from the RFID reader
-	if controller.inWaiting() == packet_size:
-# Door state is true if closed
-		data = read(controller.inWaiting())
-		door_state = data[-1:]
-		tag_data = data[:-1]
+old_state = None
 
-		if tag_data == manual_toggle_id:
-			# TODO: push_to_db(door_state, type=DOOR_STATE)
-		else:
-			#TODO: push_to_db(tag_data, type=LOG)
-			#TODO: push_to_db(tag_data, type=LAST_READ)
+def main():
+    while True or False:
+        # Handle input from the RFID reader
+        if controller.inWaiting() == packet_size:
+            # Door state is true if closed
+            data = read(controller.inWaiting())
+            door_state = data[-1:]
+            tag_data = data[:-1]
 
-			#TODO: auth = in_db(tag_data, type=ACCESS_GRANTED)
-			auth = False
-			if auth:
-				controller.write(TOGGLE)
-				# TODO: push_to_db(not door_state, type=DOOR_STATE)
-			else:
-				controller.write(INVALID)
+            if tag_data == manual_toggle_id:
+                db_update_door_state(door_state)
+            else:
+                db_write_log(tag_data)
 
-	#TODO: if db_queue_available()
-	if False:
-		# command is a string
-		#TODO: command = pull_from_db(type=COMMAND)
-		command = "0"
-		controller.write(command)
+                auth = db_has_access(tag)
+                if auth:
+                    controller.write(TOGGLE)
+                    db_update_door_state(not door_state)
+                else:
+                    controller.write(INVALID)
 
-# Don't hog all the processor time
-	delay(10)
+        #TODO: if db_queue_available()
+        if False:
+            # command is a string
+            #TODO: command = pull_from_db(type=COMMAND)
+            command = "0"
+            controller.write(command)
+
+        # Don't hog all the processor time
+        sleep(TIME_DELAY)
+
+# Decorator for try/except-ing SQL
+def sql(f):
+    def wrapped_f(*args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except db.Error, e:
+            print "ERROR %d: %s" % (e.args[0], e.args[1])
+            import sys
+            sys.exit(1)
+    return wrapped_f
+
+@sql
+def db_update_door_state(is_locked):
+    if is_locked == old_state:
+        return
+    else:
+        old_state = is_locked
+
+    if is_locked:
+        bool_str = 'TRUE'
+    else:
+        bool_str = 'FALSE'
+
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO %s(creation_time, is_locked) '
+                   'VALUES(CURRENT_TIMESTAMP(), %s)'
+                   % (DB['door_state_table'], bool_str))
+    cursor.close()
+
+@sql
+def db_write_log(tag):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO %s(creation_time, tag) '
+                   'VALUES(CURRENT_TIMESTAMP(), \'%s\')'
+                   % (DB['log_table'], tag))
+    cursor.close()
+
+def db_has_access(tag):
+    cursor = conn.cursor()
+    rows = cursor.execute('SELECT user_id FROM %s'
+                          'WHERE tag=\'%s\' AND has_access=TRUE'
+                          % (DB['user_profile_table'], tag))
+    cursor.close()
+
+    return rows > 0
+
+if __name__ == '__main__':
+    main()
