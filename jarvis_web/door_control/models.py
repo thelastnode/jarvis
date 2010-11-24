@@ -11,6 +11,21 @@ class UserProfile(models.Model):
     def __unicode__(self):
         return self.user.username
 
+class DoorState(models.Model):
+    creation_time = models.DateTimeField(auto_now_add=True)
+    is_locked = models.BooleanField(blank=False, null=False)
+
+    def __unicode__(self):
+        return str(self.creation_time) + ": " + str(self.is_locked)
+
+class RfidLogEntry(models.Model):
+    creation_time = models.DateTimeField(auto_now_add=True)
+    tag = models.CharField(max_length=256, blank=False, null=False)
+
+    def __unicode(self):
+        return str(self.creation_time) + ": " + str(self.tag)
+
+
 # Automatically create UserProfile for user:
 def _create_profile_receiver(sender, instance, **kwargs):
     """Receives a signal whenever a User is created and creates a
