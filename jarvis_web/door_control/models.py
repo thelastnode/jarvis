@@ -31,6 +31,7 @@ class QueueEntry(models.Model):
         (1, 'Lock'),
         (2, 'Unlock'),
         (3, 'Invalid'),
+        (4, 'Request State'),
     )
     creation_time = models.DateTimeField(auto_now_add=True, blank=False, null=False)
     command = models.IntegerField(choices=COMMAND_CHOICES, blank=False, null=False)
