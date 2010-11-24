@@ -8,6 +8,9 @@ class UserProfile(models.Model):
     has_access = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
 
+    def __unicode__(self):
+        return self.user.username
+
 # Automatically create UserProfile for user:
 def _create_profile_receiver(sender, instance, **kwargs):
     """Receives a signal whenever a User is created and creates a
