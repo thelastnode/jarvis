@@ -6,6 +6,7 @@ class UserProfile(models.Model):
 
     rfid_tag = models.CharField(max_length=128, blank=True, null=True, default='')
     has_access = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
 
 # Automatically create UserProfile for user:
 def _create_profile_receiver(sender, instance, **kwargs):
