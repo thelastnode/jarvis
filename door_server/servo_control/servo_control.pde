@@ -4,7 +4,7 @@
 #define LOCK   '1'
 #define UNLOCK '2'
 #define INVALID '3'
-#define REQ_STATE '4'
+#define STATE_REQ '4'
 
 #define BAUD 9600
 
@@ -27,7 +27,8 @@
 
 #define LOCK_TOGGLE_PIN 4
 
-#define MANUAL_TOGGLE_ID "MANUALOPEN"
+#define MANUAL_TOGGLE_ID "MANOPEN_"
+#define STATE_REQ_PAD "GGGGGGGG"
 
 // For reading bits Wiegand style
 unsigned long output = 0;
@@ -72,7 +73,12 @@ void loop(){
 
 	if (debounce_integ == 10 && !wait_for_release) {
 		Serial.print(MANUAL_TOGGLE_ID);
-		Serial.print(door_locked+'0', BYTE);
+		// Toggle door takes time, is blocking. So, since it's toggling,
+		// send the inverse of the door locked state.
+		if (door_locked)
+			Serial.print('0', BYTE);
+		else
+			Serial.print('1', BYTE);
 
 		toggle_door();
 		wait_for_release = 1;
@@ -109,7 +115,8 @@ void loop(){
 			case INVALID:
 				blink_invalid();
 				break;
-			case REQ_STATE:
+			case STATE_REQ:
+				Serial.print(STATE_REQ_PAD);
 				Serial.print(door_locked + '0', BYTE);
 				break;
 			default:

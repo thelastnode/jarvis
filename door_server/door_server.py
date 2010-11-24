@@ -37,7 +37,8 @@ UNLOCK = '2'
 INVALID = '3'
 REQ_STATE = '4'
 
-manual_toggle_id = 'MANUALOPEN'
+manual_toggle_id = 'MANOPEN_'
+state_req_id = 'GGGGGGGG'
 
 # time delay for server loop in seconds (can be a float)
 TIME_DELAY = 1
@@ -61,7 +62,7 @@ def main():
 
             db_update_door_state(door_state)
 
-            if tag_data != manual_toggle_id:
+            if tag_data != manual_toggle_id and tag_data != state_req_id:
                 db_write_log(tag_data)
 
                 auth = db_has_access(tag)
