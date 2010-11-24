@@ -22,9 +22,21 @@ class RfidLogEntry(models.Model):
     creation_time = models.DateTimeField(auto_now_add=True)
     tag = models.CharField(max_length=256, blank=False, null=False)
 
-    def __unicode(self):
+    def __unicode__(self):
         return str(self.creation_time) + ": " + str(self.tag)
 
+class QueueEntry(models.Model):
+    COMMAND_CHOICES = (
+        (0, 'Toggle'),
+        (1, 'Lock'),
+        (2, 'Unlock'),
+        (3, 'Invalid'),
+    )
+    creation_time = models.DateTimeField(auto_now_add=True)
+    command = models.IntegerField()
+
+    def __unicode__(self):
+        return str(self.creation_time) + ": " + COMMAND_CHOICES[command][1]
 
 # Automatically create UserProfile for user:
 def _create_profile_receiver(sender, instance, **kwargs):
