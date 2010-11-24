@@ -18,6 +18,7 @@ DB = {
     'log_table' : 'door_control_rfidlogentry',
     'door_state_table' : 'door_control_doorstate',
     'user_profile_table' : 'door_control_userprofile',
+    'queue_table' : 'door_control_queueentry',
 }
 
 conn = db.connect(host=DB['host'], user=DB['user'],
@@ -65,11 +66,9 @@ def main():
                 else:
                     controller.write(INVALID)
 
-        #TODO: if db_queue_available()
-        if False:
+        while db_queue_items() > 0:
             # command is a string
-            #TODO: command = pull_from_db(type=COMMAND)
-            command = "0"
+            command = db_dequeue_command()
             controller.write(command)
 
         # Don't hog all the processor time
@@ -112,6 +111,7 @@ def db_write_log(tag):
                    % (DB['log_table'], tag))
     cursor.close()
 
+@sql
 def db_has_access(tag):
     cursor = conn.cursor()
     rows = cursor.execute('SELECT user_id FROM %s'
@@ -120,6 +120,30 @@ def db_has_access(tag):
     cursor.close()
 
     return rows > 0
+
+@sql
+def db_queue_items():
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM %s;' % DB['queue_table'])
+    result = cursor.fetchone()
+    cursor.close()
+
+    return result[0]
+
+@sql 
+def db_dequeue_command():
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, command FROM %s ORDER BY creation_time ASC LIMIT 1'
+                   % DB['queue_table'])
+    result = cursor.fetchone()
+    cursor.close()
+
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM %s WHERE id=%d'
+                  % (DB['queue_table'], result[0]))
+    cursor.close()
+
+    return result[1]
 
 if __name__ == '__main__':
     main()
