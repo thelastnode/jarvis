@@ -32,8 +32,8 @@ class QueueEntry(models.Model):
         (2, 'Unlock'),
         (3, 'Invalid'),
     )
-    creation_time = models.DateTimeField(auto_now_add=True)
-    command = models.IntegerField()
+    creation_time = models.DateTimeField(auto_now_add=True, blank=False, null=False)
+    command = models.IntegerField(choices=COMMAND_CHOICES, blank=False, null=False)
 
     def __unicode__(self):
         return str(self.creation_time) + ": " + COMMAND_CHOICES[command][1]

@@ -25,7 +25,7 @@ conn = db.connect(host=DB['host'], user=DB['user'],
                   passwd=DB['password'], db=DB['name'])
 
 # Low level config
-interface = '/dev/ttyUSB0/'
+interface = '/dev/ttyUSB0'
 baud = 9600
 timeout = None
 # should be 8 characters data and 1 character door state
@@ -58,9 +58,9 @@ def main():
             door_state = data[-1:]
             tag_data = data[:-1]
 
-            if tag_data == manual_toggle_id:
-                db_update_door_state(door_state)
-            else:
+            db_update_door_state(door_state)
+
+            if tag_data != manual_toggle_id:
                 db_write_log(tag_data)
 
                 auth = db_has_access(tag)

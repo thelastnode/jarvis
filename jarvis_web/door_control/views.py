@@ -8,17 +8,15 @@ from django.shortcuts import render_to_response
 
 from jarvis_web.door_control.decorators import render_to
 from jarvis_web.door_control.forms import LoginForm
+from jarvis_web.door_control.models import QueueEntry, DoorState
 
 @login_required
 @render_to('home.html')
 def home(request):
     if request.method == 'POST':
-        pass # TODO add toggle request to DB
-        print "Toggling door state!"
-    pass # TODO query DB for door state
-    from random import randint
-    is_locked = randint(0,1) == 1
-    return {'is_locked': is_locked }
+        QueueEntry(command=QueueEntry.COMMAND_CHOICES[0]).save()
+    recent = DoorState.objects.order_by('-creation_time')[0]
+    return {'is_locked': recent.is_locked }
 
 @render_to('login.html')
 def login(request, **kwargs):
