@@ -3,7 +3,17 @@
 {% block title %}Door Control{% endblock %}
 
 {% block body %}
-<div id="welcome">
+<div id="user_info">
     Hi, {{ user.username }}! <a href="{% url logout %}">Logout</a>
+</div>
+
+<form action="{% url home %}" method="POST">
+    {% csrf_token %}
+    {% if is_locked %}
+    <input type="submit" value="Unlock Door"/> 
+    {% else %}
+    <input type="submit" value="Lock Door"/> 
+    {% endif %}
+</form>
 </div>
 {% endblock %}

@@ -11,8 +11,14 @@ from jarvis_web.door_control.forms import LoginForm
 
 @login_required
 @render_to('home.html')
-def home(self):
-    return {}
+def home(request):
+    if request.method == 'POST':
+        pass # TODO add toggle request to DB
+        print "Toggling door state!"
+    pass # TODO query DB for door state
+    from random import randint
+    is_locked = randint(0,1) == 1
+    return {'is_locked': is_locked }
 
 @render_to('login.html')
 def login(request, **kwargs):
