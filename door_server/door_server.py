@@ -35,6 +35,7 @@ TOGGLE = '0'
 LOCK   = '1'
 UNLOCK = '2'
 INVALID = '3'
+REQ_STATE = '4'
 
 manual_toggle_id = 'MANUALOPEN'
 

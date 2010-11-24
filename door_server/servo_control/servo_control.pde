@@ -4,6 +4,7 @@
 #define LOCK   '1'
 #define UNLOCK '2'
 #define INVALID '3'
+#define REQ_STATE '4'
 
 #define BAUD 9600
 
@@ -107,6 +108,9 @@ void loop(){
 				break;
 			case INVALID:
 				blink_invalid();
+				break;
+			case REQ_STATE:
+				Serial.print(door_locked + '0', BYTE);
 				break;
 			default:
 				break;
