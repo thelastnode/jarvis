@@ -1,2 +1,6 @@
-- add controls to web application
+- add ability for admins to add other users
+- add ability to assign tag to user
+- add log view
+- pretty up web interface
+- add AJAX refresh to door status
 - fix failed login to still take you to the 'next' url
