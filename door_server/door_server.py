@@ -51,7 +51,7 @@ def main():
     sleep(2)
     sdata_timeout_count = 0
 
-    for rqcnt in range(10):
+    while controller.inWaiting() == 0:
         # request door state
         controller.write(REQ_STATE)
         sleep(TIME_DELAY)
