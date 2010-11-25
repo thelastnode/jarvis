@@ -41,7 +41,7 @@ manual_toggle_id = 'MANOPEN_'
 state_req_id = 'GGGGGGGG'
 
 # time delay for server loop in seconds (can be a float)
-TIME_DELAY = 1
+TIME_DELAY = 0.01
 
 controller = serial.Serial(interface, baud, timeout = timeout);
 sleep(2)
@@ -71,7 +71,7 @@ def main():
             if tag_data != manual_toggle_id and tag_data != state_req_id:
                 db_write_log(tag_data)
 
-                auth = db_has_access(tag)
+                auth = db_has_access(tag_data)
                 if auth:
                     controller.write(TOGGLE)
                     db_update_door_state(not is_locked)
@@ -127,8 +127,8 @@ def db_write_log(tag):
 @sql
 def db_has_access(tag):
     cursor = conn.cursor()
-    rows = cursor.execute('SELECT user_id FROM %s'
-                          'WHERE tag=\'%s\' AND has_access=TRUE'
+    rows = cursor.execute('SELECT user_id FROM %s '
+                          'WHERE rfid_tag=\'%s\' AND has_access=TRUE'
                           % (DB['user_profile_table'], tag))
     cursor.close()
 
