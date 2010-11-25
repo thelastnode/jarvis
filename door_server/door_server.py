@@ -40,28 +40,48 @@ REQ_STATE = '4'
 manual_toggle_id = 'MANOPEN_'
 state_req_id = 'GGGGGGGG'
 
+sdata_timeout = 12
+
 # time delay for server loop in seconds (can be a float)
 TIME_DELAY = 0.01
-
-controller = serial.Serial(interface, baud, timeout = timeout);
-sleep(2)
 
 old_state = None
 
 def main():
-    global controller
-    controller.read(controller.inWaiting())
+    controller = serial.Serial(interface, baud, timeout = timeout);
+    sleep(2)
+    sdata_timeout_count = 0
+
+    for rqcnt in range(10):
+        # request door state
+        controller.write(REQ_STATE)
+        sleep(TIME_DELAY)
+
+    controller.read(controller.inWaiting() - packet_size)
 
     # empty queue 
     while db_queue_items() > 0:
         db_dequeue_command()
 
     while True:
-        # request door state
-        controller.write(REQ_STATE)
+        # Timeout for the serial data. If it gets only partial data, it will 
+        # eventually clear the buffer, instead of leaving it there to
+        # mess up future reads
+        if controller.inWaiting() == 0:
+            sdata_timeout_count = 0
 
-        # Handle input from the RFID reader
-        if controller.inWaiting() >= packet_size:
+        # Only some data read
+        if controller.inWaiting() > 0 and controller.inWaiting() < packet_size:
+            sdata_timeout_count += 1
+
+        # Timed out
+        if sdata_timeout_count == sdata_timeout:
+            sdata_timeout_count = 0
+            controller.read(controller.inWaiting())
+
+        while controller.inWaiting() >= packet_size:
+            sdata_timeout_count = 0
+
             # Door state is true if closed
             data = controller.read(packet_size)
             is_locked = data[-1:] == '1'
