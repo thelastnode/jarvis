@@ -50,6 +50,7 @@ old_state = None
 
 def main():
     global controller
+	controller.read(controller.inWaiting())
 
     # empty queue 
     while db_queue_items() > 0:
