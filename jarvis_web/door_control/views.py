@@ -14,7 +14,8 @@ from jarvis_web.door_control.models import QueueEntry, DoorState
 @render_to('home.html')
 def home(request):
     if request.method == 'POST':
-        QueueEntry(command=QueueEntry.COMMAND_CHOICES[0]).save()
+        # toggle door state
+        QueueEntry(command=QueueEntry.COMMAND_CHOICES[0][0]).save()
     recent = DoorState.objects.order_by('-creation_time')[0]
     return {'is_locked': recent.is_locked }
 

@@ -41,44 +41,47 @@ manual_toggle_id = 'MANOPEN_'
 state_req_id = 'GGGGGGGG'
 
 # time delay for server loop in seconds (can be a float)
-TIME_DELAY = 1
+TIME_DELAY = 0.01
 
 controller = serial.Serial(interface, baud, timeout = timeout);
+sleep(2)
 
 old_state = None
 
 def main():
+    global controller
+
     # empty queue 
     while db_queue_items() > 0:
         db_dequeue_command()
 
-    # request door state
-    controller.write(REQ_STATE)
-
     while True:
+        # request door state
+        controller.write(REQ_STATE)
+
         # Handle input from the RFID reader
-        if controller.inWaiting() == packet_size:
+        if controller.inWaiting() >= packet_size:
             # Door state is true if closed
-            data = read(controller.inWaiting())
-            door_state = data[-1:]
+            data = controller.read(packet_size)
+            is_locked = data[-1:] == '1'
             tag_data = data[:-1]
 
-            db_update_door_state(door_state)
+            db_update_door_state(is_locked)
 
             if tag_data != manual_toggle_id and tag_data != state_req_id:
                 db_write_log(tag_data)
 
-                auth = db_has_access(tag)
+                auth = db_has_access(tag_data)
                 if auth:
                     controller.write(TOGGLE)
-                    db_update_door_state(not door_state)
+                    db_update_door_state(not is_locked)
                 else:
                     controller.write(INVALID)
 
         while db_queue_items() > 0:
             # command is a string
             command = db_dequeue_command()
-            controller.write(command)
+            controller.write(str(command))
 
         # Don't hog all the processor time
         sleep(TIME_DELAY)
@@ -87,7 +90,7 @@ def main():
 def sql(f):
     def wrapped_f(*args, **kwargs):
         try:
-            f(*args, **kwargs)
+            return f(*args, **kwargs)
         except db.Error, e:
             print "ERROR %d: %s" % (e.args[0], e.args[1])
             import sys
@@ -96,6 +99,7 @@ def sql(f):
 
 @sql
 def db_update_door_state(is_locked):
+    global old_state
     if is_locked == old_state:
         return
     else:
@@ -123,8 +127,8 @@ def db_write_log(tag):
 @sql
 def db_has_access(tag):
     cursor = conn.cursor()
-    rows = cursor.execute('SELECT user_id FROM %s'
-                          'WHERE tag=\'%s\' AND has_access=TRUE'
+    rows = cursor.execute('SELECT user_id FROM %s '
+                          'WHERE rfid_tag=\'%s\' AND has_access=TRUE'
                           % (DB['user_profile_table'], tag))
     cursor.close()
 
