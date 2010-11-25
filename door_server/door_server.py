@@ -28,8 +28,8 @@ conn = db.connect(host=DB['host'], user=DB['user'],
 interface = '/dev/ttyUSB0'
 baud = 9600
 timeout = None
-# should be 8 characters data and 1 character door state
-packet_size = 9
+# should be 8 characters tag id OR 7 characters packet type and 1 character data
+packet_size = 8
 
 TOGGLE = '0'
 LOCK   = '1'
@@ -37,8 +37,7 @@ UNLOCK = '2'
 INVALID = '3'
 REQ_STATE = '4'
 
-manual_toggle_id = 'MANOPEN_'
-state_req_id = 'GGGGGGGG'
+ack_id = 'ACKACK_'
 
 sdata_timeout = 12
 
@@ -74,28 +73,26 @@ def main():
         if controller.inWaiting() > 0 and controller.inWaiting() < packet_size:
             sdata_timeout_count += 1
 
-        # Timed out
+        # Partially received packet timed out
         if sdata_timeout_count == sdata_timeout:
             sdata_timeout_count = 0
             controller.read(controller.inWaiting())
 
+        # Handle all waiting packets
         while controller.inWaiting() >= packet_size:
             sdata_timeout_count = 0
 
             # Door state is true if closed
             data = controller.read(packet_size)
-            is_locked = data[-1:] == '1'
-            tag_data = data[:-1]
+            pkt_type = data[:-1]
 
-            db_update_door_state(is_locked)
-
-            if tag_data != manual_toggle_id and tag_data != state_req_id:
-                db_write_log(tag_data)
-
-                auth = db_has_access(tag_data)
+            if pkt_type == ack_id:
+                db_update_door_state(data[-1:] == '1')
+            else:
+                db_write_log(data)
+                auth = db_has_access(data)
                 if auth:
                     controller.write(TOGGLE)
-                    db_update_door_state(not is_locked)
                 else:
                     controller.write(INVALID)
 
