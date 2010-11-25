@@ -120,6 +120,7 @@ bool button_toggled() {
 		debounce_integ++;
 	} else if (debounce_integ > 0)
 		debounce_integ--;
+
 	if (debounce_integ == 10 && !wait_for_release) {
 		wait_for_release = true;
 		return true;
