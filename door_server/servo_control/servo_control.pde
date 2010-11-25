@@ -51,8 +51,6 @@ bool wait_for_release = false;
 Servo servo_lock;
 Servo servo_unlock;
 
-void send_ack(bool send_inv = false);
-
 void setup() {
 	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
@@ -67,11 +65,8 @@ void setup() {
 void loop(){
 	// Check for manual lock toggle
 	if (button_toggled()) {
-		// Toggle door takes time, is blocking. So, since it's toggling,
-		// send the inverse of the door locked state.
-		send_ack(true);
-
 		toggle_door();
+		send_ack();
 	}
 
 	// Send tag id
@@ -110,16 +105,9 @@ void loop(){
 	}
 }
 
-void send_ack(bool send_inv) {
+void send_ack() {
 	Serial.print(ACK_ID);
-	if (send_inv) {
-		if (door_locked)
-			Serial.print('0', BYTE);
-		else
-			Serial.print('1', BYTE);
-	}
-	else
-		Serial.print(door_locked + '0', BYTE);
+	Serial.print(door_locked + '0', BYTE);
 }
 
 // Debounce the manual lock toggle button and return true if the 
