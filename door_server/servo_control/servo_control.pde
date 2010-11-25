@@ -41,13 +41,13 @@ unsigned long time_since_last_bit = 0;
 unsigned char byte_in = 0;
 
 // Current door state
-unsigned char door_locked = 0;
+bool door_locked = false;
 
 // Manual door toggling
 // Debounce integrator
 unsigned char debounce_integ = 0;
 // waiting for release
-unsigned char wait_for_release = 0;
+bool wait_for_release = false;
 
 Servo servo_lock;
 Servo servo_unlock;
@@ -64,14 +64,8 @@ void setup() {
 }
 
 void loop(){
-	// Toggle the door state
-	if (digitalRead(LOCK_TOGGLE_PIN)) {
-		if (debounce_integ < 10)
-		debounce_integ++;
-	} else if (debounce_integ > 0)
-		debounce_integ--;
-
-	if (debounce_integ == 10 && !wait_for_release) {
+	// Check for manual lock toggle
+	if (button_toggled()) {
 		Serial.print(MANUAL_TOGGLE_ID);
 		// Toggle door takes time, is blocking. So, since it's toggling,
 		// send the inverse of the door locked state.
@@ -81,25 +75,17 @@ void loop(){
 			Serial.print('1', BYTE);
 
 		toggle_door();
-		wait_for_release = 1;
-	} else if (debounce_integ == 0 && wait_for_release) {
-		wait_for_release = 0;
 	}
-	
+
+	// Send tag id
 	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
-		// TODO: not hardcode passkeys
-		/*
-		if (output == 0x890B07D5 || output == 0x890AC115 || output == 0x2242A89F || output == 0x890A6182 || output == 0x890AA27E)
-			toggle_door();
-		else
-			blink_invalid();
-		*/
 		Serial.print(output, HEX);
 		Serial.print(door_locked + '0', BYTE);
 		bit_count = 0;
 		output = 0;
 	}
-	// Interpret command
+
+	// Interpret received command
 	if (Serial.available() > 0) {
 		byte_in = Serial.read();
 		switch (byte_in) {
@@ -125,6 +111,24 @@ void loop(){
 	}
 }
 
+// Debounce the manual lock toggle button and return true if the 
+// button was truely pressed
+bool button_toggled() {
+	// Toggle the door state
+	if (digitalRead(LOCK_TOGGLE_PIN)) {
+		if (debounce_integ < 10)
+		debounce_integ++;
+	} else if (debounce_integ > 0)
+		debounce_integ--;
+	if (debounce_integ == 10 && !wait_for_release) {
+		wait_for_release = true;
+		return true;
+	} else if (debounce_integ == 0 && wait_for_release) {
+		wait_for_release = false;
+	}
+	return false;
+}
+
 void count_one() {
 	output = (output<<1) + 1;
 	bit_count++;
@@ -144,6 +148,21 @@ void toggle_door() {
 	else {
 		lock_door();
 	}
+	if (debounce_integ == 10 && !wait_for_release) {
+		Serial.print(MANUAL_TOGGLE_ID);
+		// Toggle door takes time, is blocking. So, since it's toggling,
+		// send the inverse of the door locked state.
+		if (door_locked)
+			Serial.print('0', BYTE);
+		else
+			Serial.print('1', BYTE);
+
+		toggle_door();
+		wait_for_release = true;
+	} else if (debounce_integ == 0 && wait_for_release) {
+		wait_for_release = false;
+	}
+	
 }
 
 void unlock_door() {
@@ -162,7 +181,7 @@ void unlock_door() {
 	servo_lock.detach();
 	servo_unlock.detach();
 
-	door_locked = 0;
+	door_locked = false;
 }
 
 void lock_door() {
@@ -181,7 +200,7 @@ void lock_door() {
 	servo_lock.detach();
 	servo_unlock.detach();
 
-	door_locked = 1;
+	door_locked = true;
 }
 
 void blink_invalid() {
