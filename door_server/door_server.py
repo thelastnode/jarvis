@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from time import sleep
+from datetime import datetime
 
 # change for appropriate database 
 import MySQLdb as db
@@ -42,7 +43,7 @@ ack_id = 'ACKACK_'
 sdata_timeout = 12
 
 # time delay for server loop in seconds (can be a float)
-TIME_DELAY = 0.01
+TIME_DELAY = 0.1
 
 old_state = None
 
@@ -51,12 +52,14 @@ def main():
     sleep(2)
     sdata_timeout_count = 0
 
-    for rqcnt in range(10):
+    while controller.inWaiting() == 0:
         # request door state
         controller.write(REQ_STATE)
+        print 'init ping at %s' %str(datetime.now())
         sleep(TIME_DELAY)
 
     controller.read(controller.inWaiting() - packet_size)
+    print 'starting up at %s' %str(datetime.now())
 
     # empty queue 
     while db_queue_items() > 0:
@@ -68,6 +71,8 @@ def main():
         # mess up future reads
         if controller.inWaiting() == 0:
             sdata_timeout_count = 0
+        else:
+            print '%d bytes waiting. %s' %(controller.inWaiting(), str(datetime.now()))
 
         # Only some data read
         if controller.inWaiting() > 0 and controller.inWaiting() < packet_size:
@@ -76,6 +81,7 @@ def main():
         # Partially received packet timed out
         if sdata_timeout_count == sdata_timeout:
             sdata_timeout_count = 0
+            print '%d bytes timed out. %s' %(controller.inWaiting(), str(datetime.now()))
             controller.read(controller.inWaiting())
 
         # Handle all waiting packets
@@ -84,22 +90,27 @@ def main():
 
             # Door state is true if closed
             data = controller.read(packet_size)
-            pkt_type = data[:-1]
+            print 'read packet. %d bytes remaining. %s' %(controller.inWaiting(), str(datetime.now()))
+            pkt_type = data[:3]
 
             if pkt_type == ack_id:
                 db_update_door_state(data[-1:] == '1')
+                print 'updated locked state: %s. %s' %(str(data[-1:] == '1'), str(datetime.now()))
             else:
                 db_write_log(data)
                 auth = db_has_access(data)
                 if auth:
+                    print 'authed tag id: %s. %s' %(data, str(datetime.now()))
                     controller.write(TOGGLE)
                 else:
+                    print 'denied tag id: %s. %s' %(data, str(datetime.now()))
                     controller.write(INVALID)
 
         while db_queue_items() > 0:
             # command is a string
             command = db_dequeue_command()
             controller.write(str(command))
+            print 'sent command %s. %s' %(str(command), str(datetime.now()))
 
         # Don't hog all the processor time
         sleep(TIME_DELAY)
