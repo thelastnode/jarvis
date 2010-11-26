@@ -27,7 +27,9 @@
 
 #define LOCK_TOGGLE_PIN 4
 
-#define ACK_ID "ACKACK_"
+#define ACK_ID "ACK"
+#define ACK_PADDING "ACK_"
+#define MAN_OPEN_ID "MAN_"
 
 // For reading bits Wiegand style
 unsigned long tag_id = 0;
@@ -66,7 +68,7 @@ void loop(){
 	// Check for manual lock toggle
 	if (button_toggled()) {
 		toggle_door();
-		send_ack();
+		send_man_open();
 	}
 
 	// Send tag id
@@ -107,6 +109,13 @@ void loop(){
 
 void send_ack() {
 	Serial.print(ACK_ID);
+	Serial.print(ACK_PADDING);
+	Serial.print(door_locked + '0', BYTE);
+}
+
+void send_man_open() {
+	Serial.print(ACK_ID);
+	Serial.print(MAN_OPEN_ID);
 	Serial.print(door_locked + '0', BYTE);
 }
 
