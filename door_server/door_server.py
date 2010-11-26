@@ -38,7 +38,8 @@ UNLOCK = '2'
 INVALID = '3'
 REQ_STATE = '4'
 
-ack_id = 'ACKACK_'
+ack_id = 'ACK'
+man_open_id = 'MAN'
 
 sdata_timeout = 12
 
@@ -96,6 +97,8 @@ def main():
             if pkt_type == ack_id:
                 db_update_door_state(data[-1:] == '1')
                 print 'updated locked state: %s. %s' %(str(data[-1:] == '1'), str(datetime.now()))
+                if data[3:6] == man_open_id:
+                    db_write_log('MANUAL TOGGLE')
             else:
                 db_write_log(data)
                 auth = db_has_access(data)
