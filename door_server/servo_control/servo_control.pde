@@ -5,8 +5,10 @@
 #define UNLOCK '2'
 #define INVALID '3'
 #define STATE_REQ '4'
+#define SET_LOCKED '5'
+#define SET_UNLOCKED '6'
 
-#define BAUD 9600
+#define BAUD 57600
 
 #define SERVO_ON_TIME 1000
 #define SERVO_RET_TIME 800
@@ -157,6 +159,11 @@ void toggle_door() {
 	else {
 		lock_door();
 	}
+}
+
+void set_door_locked(bool locked) {
+	door_locked = locked;
+	digitalWrite(LOCKED_INDICATOR_PIN, door_locked);
 }
 
 void unlock_door() {

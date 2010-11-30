@@ -25,22 +25,25 @@ conn = db.connect(host=DB['host'], user=DB['user'],
                   passwd=DB['password'], db=DB['name'])
 
 # Low level config
-interface = '/dev/ttyUSB0'
-baud = 9600
-timeout = None
+DEFAULT_INTERFACE = '/dev/ttyUSB0'
+BAUD = 57600
+TIMEOUT = None
 # should be 8 characters tag id OR 7 characters packet type and 1 character data
-packet_size = 8
+PACKET_SIZE = 8
 
 TOGGLE = '0'
 LOCK   = '1'
 UNLOCK = '2'
 INVALID = '3'
 REQ_STATE = '4'
+SET_LOCKED '5'
+SET_UNLOCKED '6'
 
-ack_id = 'ACK'
-man_open_id = 'MAN'
+ACK_ID = 'ACK'
+MAN_OPEN_ID = 'MAN'
 
-sdata_timeout = 12
+FULL_PACKET_TIMEOUT = 12
+PING_TIMEOUT = 700
 
 # time delay for server loop in seconds (can be a float)
 TIME_DELAY = 0.01
@@ -48,64 +51,72 @@ TIME_DELAY = 0.01
 old_state = None
 
 def main():
-    controller = serial.Serial(interface, baud, timeout = timeout);
-    sleep(2)
-    sdata_timeout_count = 0
-
-    while controller.inWaiting() == 0:
-        # request door state
-        controller.write(REQ_STATE)
-        sleep(TIME_DELAY)
-
-    controller.read(controller.inWaiting() - packet_size)
-
     # empty queue 
     while db_queue_items() > 0:
         db_dequeue_command()
+
+    controller = setup_serial_connection(DEFAULT_INTERFACE)
 
     while True:
         # Timeout for the serial data. If it gets only partial data, it will 
         # eventually clear the buffer, instead of leaving it there to
         # mess up future reads
         if controller.inWaiting() == 0:
-            sdata_timeout_count = 0
+            full_packet_timeout_count = 0
 
         # Only some data read
-        if controller.inWaiting() > 0 and controller.inWaiting() < packet_size:
-            sdata_timeout_count += 1
+        if controller.inWaiting() > 0 and controller.inWaiting() < PACKET_SIZE:
+            full_packet_timeout_count += 1
 
         # Partially received packet timed out
-        if sdata_timeout_count == sdata_timeout:
-            sdata_timeout_count = 0
+        if full_packet_timeout_count == FULL_PACKET_TIMEOUT:
+            full_packet_timeout_count = 0
             controller.read(controller.inWaiting())
 
-        # Handle all waiting packets
-        while controller.inWaiting() >= packet_size:
-            sdata_timeout_count = 0
+        handle_incoming_packets(controller)
 
-            # Door state is true if closed
-            data = controller.read(packet_size)
-            pkt_type = data[:3]
-
-            if pkt_type == ack_id:
-                db_update_door_state(data[-1:] == '1')
-                if data[3:6] == man_open_id:
-                    db_write_log('MANUAL TOGGLE')
-            else:
-                db_write_log(data)
-                auth = db_has_access(data)
-                if auth:
-                    controller.write(TOGGLE)
-                else:
-                    controller.write(INVALID)
-
-        while db_queue_items() > 0:
-            # command is a string
-            command = db_dequeue_command()
-            controller.write(str(command))
+        process_db_queue(controller)
 
         # Don't hog all the processor time
         sleep(TIME_DELAY)
+
+def process_db_queue(controller)
+    while db_queue_items() > 0:
+        # command is a string
+        command = db_dequeue_command()
+        controller.write(str(command))
+
+def setup_serial_connection(interface)
+    controller = serial.Serial(interface, BAUD, timeout = TIMEOUT);
+    full_packet_timeout_count = 0
+
+    while controller.inWaiting() == 0:
+        # request door state
+        controller.write(REQ_STATE)
+        sleep(TIME_DELAY)
+
+    controller.read(controller.inWaiting() - PACKET_SIZE)
+
+def handle_incoming_packets(controller)
+    # Handle all waiting packets
+    while controller.inWaiting() >= PACKET_SIZE:
+        full_packet_timeout_count = 0
+
+        # Door state is true if closed
+        data = controller.read(PACKET_SIZE)
+        pkt_type = data[:3]
+
+        if pkt_type == ACK_ID:
+            db_update_door_state(data[-1:] == '1')
+            if data[3:6] == MAN_OPEN_ID:
+                db_write_log('MANUAL TOGGLE')
+        else:
+            db_write_log(data)
+            auth = db_has_access(data)
+            if auth:
+                controller.write(TOGGLE)
+            else:
+                controller.write(INVALID)
 
 # Decorator for try/except-ing SQL
 def sql(f):
