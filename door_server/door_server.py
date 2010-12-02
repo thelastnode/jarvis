@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import serial, re, os
-from time import sleep
+from time import sleep, gmtime, strftime
 
 # change for appropriate database 
 import MySQLdb as db
@@ -94,9 +94,17 @@ def main():
 
         # Partially received frame header timed out
         if full_frame_timeout_count > FULL_FRAME_TIMEOUT:
+            #PRINT
+            print_timestamp()
+            print 'TIMEOUT partially read header discarded'
+
             full_frame_timeout_count = 0
             controller.read(controller.inWaiting())
             
+        #PRINT
+        if controller.inWaiting() > 0:
+            print_timestamp()
+            print 'DATA %d bytes in queue'%controller.inWaiting()
 
         # Handle incoming frames with a complete frame header
         (frame_read_status, write_queue) = handle_incoming_frames(controller)
@@ -106,10 +114,18 @@ def main():
 
         # Successfully received an ack. Reset the timeout
         if frame_read_status == FRAME_RCV:
+            #PRINT
+            print_timestamp()
+            print 'ACK received'
+
             ack_timeout_count = 0
 
         # Command ack timed out or reading a whole frame timed out
         if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
+            #PRINT
+            print_timestamp()
+            print 'CONN connection lost'
+
             # Reset the connection
             controller.close();
             controller = setup_serial_connection(get_open_serial_port)
@@ -133,6 +149,10 @@ def main():
 
         # Send a ping if not already waiting for an ack
         if ping_timeout_count > PING_TIMEOUT and not ack_timeout_count > 0:
+            #PRINT
+            print_timestamp()
+            print 'DATA ping sent'
+
             write_queue.append(REQ_STATE)
             ping_timeout_count = 0
 
@@ -141,11 +161,23 @@ def main():
         # Don't hog all the processor time
         sleep(TIME_DELAY)
 
+def print_timestamp():
+    print strftime("[%a, %d %b %Y %H:%M:%S] ", localtime()),
+
 def get_open_serial_port():
-    ports = [x for x in os.listdir('/dev/') if re.search('ttyUSB\d+', x)]
+    ports = []
+
     while not ports:
+        #PRINT
+        print_timestamp()
+        print 'CONN searching for connection'
+
         sleep(PORT_TIME_DELAY)
         ports = [x for x in os.listdir('/dev/') if re.search('ttyUSB\d+', x)]
+
+    #PRINT
+    print_timestamp()
+    print 'CONN found port at %s'%ports[0]
 
     return ports[0]
 
@@ -154,9 +186,17 @@ def setup_serial_connection(interface):
     full_frame_timeout_count = 0
 
     while controller.inWaiting() == 0:
+        #PRINT
+        print_timestamp()
+        print 'CONN initializing ping sent'
+
         # request door state
         controller.write(REQ_STATE)
         sleep(TIME_DELAY)
+
+    #PRINT
+    print_timestamp()
+    print 'CONN connection established'
 
     return controller
 
@@ -166,6 +206,11 @@ def process_db_queue(controller):
         # command is a string
         command = db_dequeue_command()
         write_queue.append(str(command))
+
+    #PRINT
+    print_timestamp()
+    print 'DB dequeued %d commands'%len(write_queue)
+
     return write_queue
 
 def handle_incoming_frames(controller):
@@ -180,25 +225,52 @@ def handle_incoming_frames(controller):
         if frm_type == ACK_ID:
             ack_data = controller.read(ACK_SIZE)
 
+            #PRINT
+            print_timestamp()
+            print 'DATA received ack frame'
+
             # Timeout on data read
             if len(ack_data) < ACK_SIZE:
                 read_status = FRAME_TIMEOUT
+
+                #PRINT
+                print_timestamp()
+                print 'CONN frame read timed out'
+
                 return (read_status, write_queue)
 
             # Successfully read data
             read_status = FRAME_RCV
             if ack_data[:2] == STATE_ID:
                 db_update_door_state(data[-1:] == '1')
+
+                #PRINT
+                print_timestamp()
+                print 'DATA door state updated. is_locked = %s'%str(data[-1:] == '1')
+
             if ack_data[:2] == MAN_OPEN_ID:
                 db_write_log('MANUAL TOGGLE')
+
+                #PRINT
+                print_timestamp()
+                print 'DATA door manually toggled'
 
         # Received a tag id
         elif frm_type == TAG_ID:
             tag_data = controller.read(TAG_SIZE)
 
+            #PRINT
+            print_timestamp()
+            print 'DATA received tag id frame'
+
             # Timeout on data read
             if len(tag_data) < TAG_SIZE:
                 read_status = FRAME_TIMEOUT
+
+                #PRINT
+                print_timestamp()
+                print 'CONN frame read timed out'
+
                 return (read_status, write_queue)
 
             # Successfully read tag data
@@ -206,12 +278,26 @@ def handle_incoming_frames(controller):
             auth = db_has_access(tag_data)
             if auth:
                 write_queue.append(TOGGLE)
+
+                #PRINT
+                print_timestamp()
+                print 'DATA authorized tag id %s'%tag_data
+
             else:
                 write_queue.append(INVALID)
+
+                #PRINT
+                print_timestamp()
+                print 'DATA denied tag id %s'%tag_data
 
     return (read_status, write_queue)
 
 def send_frames(controller, write_queue):
+
+    #PRINT
+    print_timestamp()
+    print 'DATA sending %d frames'%len(write_queue)
+
     while write_queue:
         controller.write(write_queue.pop(0))
 
