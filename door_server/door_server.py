@@ -110,7 +110,7 @@ def main():
         (frame_read_status, write_queue) = handle_incoming_frames(controller)
 
         # Handle database queue
-        write_queue.append(process_db_queue(controller))
+        [write_queue.append(x) for x in process_db_queue(controller)]
 
         # Successfully received an ack. Reset the timeout
         if frame_read_status == FRAME_RCV:
