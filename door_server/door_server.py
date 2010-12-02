@@ -75,7 +75,7 @@ def main():
     ack_timeout_count = 0
     ping_timeout_count = 0
 
-	write_queue = []
+    write_queue = []
 
     # empty queue 
     while db_queue_items() > 0:
@@ -210,10 +210,10 @@ def process_db_queue(controller):
         command = db_dequeue_command()
         write_queue.append(str(command))
 
-	#PRINT
-	if write_queue:
-		print_timestamp()
-		print 'DB dequeued %d commands'%len(write_queue)
+    #PRINT
+    if write_queue:
+        print_timestamp()
+        print 'DB dequeued %d commands'%len(write_queue)
 
     return write_queue
 
