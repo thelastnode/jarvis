@@ -179,7 +179,7 @@ def get_open_serial_port():
     print_timestamp()
     print 'CONN found port at %s'%ports[0]
 
-    return ports[0]
+    return '/dev/%s'%ports[0]
 
 def setup_serial_connection(interface):
     controller = serial.Serial(interface, BAUD, timeout = TIMEOUT);
