@@ -1,12 +1,11 @@
 #!/usr/bin/python
 
+import serial, re, os
 from time import sleep
 from datetime import datetime
 
 # change for appropriate database 
 import MySQLdb as db
-
-import serial
 
 # Database config
 DB = {
@@ -26,97 +25,190 @@ conn = db.connect(host=DB['host'], user=DB['user'],
                   passwd=DB['password'], db=DB['name'])
 
 # Low level config
-interface = '/dev/ttyUSB0'
-baud = 9600
-timeout = None
-# should be 8 characters tag id OR 7 characters packet type and 1 character data
-packet_size = 8
+BAUD = 57600
+# Five seconds to read a full frame (minus 3 character header)
+TIMEOUT = 5
+# Packet header size
+FRAME_HEAD_SIZE = 2
 
-TOGGLE = '0'
-LOCK   = '1'
-UNLOCK = '2'
-INVALID = '3'
-REQ_STATE = '4'
+TOGGLE       = '0'
+LOCK         = '1'
+UNLOCK       = '2'
+INVALID      = '3'
+REQ_STATE    = '4'
+SET_LOCKED   = '5'
+SET_UNLOCKED = '6'
 
-ack_id = 'ACK'
-man_open_id = 'MAN'
+TAG_ID      = '#T'
+ACK_ID      = '#A'
+MAN_OPEN_ID = 'MN'
+STATE_ID    = 'ST'
 
-sdata_timeout = 12
+ACK_SIZE = 3
+TAG_SIZE = 16
+
+FULL_FRAME_TIMEOUT = 12
+# 10 seconds to ack
+ACK_TIMEOUT = 1000
+# 30 seconds to respond to a ping
+PING_TIMEOUT = 3000
 
 # time delay for server loop in seconds (can be a float)
-TIME_DELAY = 0.1
+TIME_DELAY = 0.01
+# time delay for waiting for the serial port to come back
+PORT_TIME_DELAY = 3
+
+FRAME_NONE = 0
+FRAME_RCV = 1
+FRAME_TIMEOUT = 2
 
 old_state = None
 
 def main():
-    controller = serial.Serial(interface, baud, timeout = timeout);
-    sleep(2)
-    sdata_timeout_count = 0
-
-    while controller.inWaiting() == 0:
-        # request door state
-        controller.write(REQ_STATE)
-        print 'init ping at %s' %str(datetime.now())
-        sleep(TIME_DELAY)
-
-    controller.read(controller.inWaiting() - packet_size)
-    print 'starting up at %s' %str(datetime.now())
+    # Timeout counters
+    full_frame_timeout_count = 0
+    ack_timeout_count = 0
+    ping_timeout_count = 0
 
     # empty queue 
     while db_queue_items() > 0:
         db_dequeue_command()
+
+    controller = setup_serial_connection(get_open_serial_port())
 
     while True:
         # Timeout for the serial data. If it gets only partial data, it will 
         # eventually clear the buffer, instead of leaving it there to
         # mess up future reads
         if controller.inWaiting() == 0:
-            sdata_timeout_count = 0
-        else:
-            print '%d bytes waiting. %s' %(controller.inWaiting(), str(datetime.now()))
+            full_frame_timeout_count = 0
 
         # Only some data read
-        if controller.inWaiting() > 0 and controller.inWaiting() < packet_size:
-            sdata_timeout_count += 1
+        if controller.inWaiting() > 0 and controller.inWaiting() < FRAME_HEAD_SIZE:
+            full_frame_timeout_count += 1
 
-        # Partially received packet timed out
-        if sdata_timeout_count == sdata_timeout:
-            sdata_timeout_count = 0
-            print '%d bytes timed out. %s' %(controller.inWaiting(), str(datetime.now()))
+        # Partially received frame header timed out
+        if full_frame_timeout_count > FULL_FRAME_TIMEOUT:
+            full_frame_timeout_count = 0
             controller.read(controller.inWaiting())
+            
 
-        # Handle all waiting packets
-        while controller.inWaiting() >= packet_size:
-            sdata_timeout_count = 0
+        # Handle incoming frames with a complete frame header
+        (frame_read_status, write_queue) = handle_incoming_frames(controller)
 
-            # Door state is true if closed
-            data = controller.read(packet_size)
-            print 'read packet. %d bytes remaining. %s' %(controller.inWaiting(), str(datetime.now()))
-            pkt_type = data[:3]
+        # Handle database queue
+        write_queue.append(process_db_queue(controller))
 
-            if pkt_type == ack_id:
-                db_update_door_state(data[-1:] == '1')
-                print 'updated locked state: %s. %s' %(str(data[-1:] == '1'), str(datetime.now()))
-                if data[3:6] == man_open_id:
-                    db_write_log('MANUAL TOGGLE')
-            else:
-                db_write_log(data)
-                auth = db_has_access(data)
-                if auth:
-                    print 'authed tag id: %s. %s' %(data, str(datetime.now()))
-                    controller.write(TOGGLE)
-                else:
-                    print 'denied tag id: %s. %s' %(data, str(datetime.now()))
-                    controller.write(INVALID)
+        # Successfully received an ack. Reset the timeout
+        if frame_read_status == FRAME_RCV:
+            ack_timeout_count = 0
 
-        while db_queue_items() > 0:
-            # command is a string
-            command = db_dequeue_command()
-            controller.write(str(command))
-            print 'sent command %s. %s' %(str(command), str(datetime.now()))
+        # Command ack timed out or reading a whole frame timed out
+        if frame_read_status = FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
+            # Reset the connection
+            controller.close();
+            controller = setup_serial_connection(get_open_serial_port)
+
+            # Reset the timeout counters
+            ack_timeout_count = 0
+            ping_timeout_count = 0
+            full_frame_timeout_count = 0
+
+
+        # Write all the frames in the queue
+        if write_queue:
+            send_frames(controller, write_queue)
+            # If its zero, make it one. If it already started, don't change it
+            # The microcontroller should always have the last word
+            ack_timeout_count = max(ack_timeout_count, 1)
+
+        # Waiting for ack?
+        if ack_timeout_count > 0:
+            ack_timeout_count += 1
+
+        # Send a ping if not already waiting for an ack
+        if ping_timeout_count > PING_TIMEOUT and not ack_timeout_count > 0:
+            write_queue.append(REQ_STATE)
+            ping_timeout_count = 0
+
+        ping_timeout_count += 1
 
         # Don't hog all the processor time
         sleep(TIME_DELAY)
+
+def get_open_serial_port()
+    ports = [x for x in os.listdir('/dev/') if re.search('ttyUSB\d+', x)]
+    while not ports:
+        sleep(PORT_TIME_DELAY)
+        ports = [x for x in os.listdir('/dev/') if re.search('ttyUSB\d+', x)]
+
+    return ports[0]
+
+def setup_serial_connection(interface)
+    controller = serial.Serial(interface, BAUD, timeout = TIMEOUT);
+    full_frame_timeout_count = 0
+
+    while controller.inWaiting() == 0:
+        # request door state
+        controller.write(REQ_STATE)
+        sleep(TIME_DELAY)
+
+    return controller
+
+def process_db_queue(controller)
+    write_queue = []
+    while db_queue_items() > 0:
+        # command is a string
+        command = db_dequeue_command()
+        write_queue.append(str(command))
+    return write_queue
+
+def handle_incoming_frames(controller)
+    # Handle all waiting frames
+    read_status = FRAME_NONE
+    write_queue = []
+    while controller.inWaiting() >= FRAME_HEAD_SIZE:
+
+        frm_type = controller.read(FRAME_HEAD_SIZE)
+
+        # Received an ack
+        if frm_type == ACK_ID:
+            ack_data = controller.read(ACK_SIZE)
+
+            # Timeout on data read
+            if len(ack_data) < ACK_SIZE:
+                read_status = FRAME_TIMEOUT
+                return (read_status, write_queue)
+
+            # Successfully read data
+            read_status = FRAME_RCV
+            if ack_data[:2] = STATE_ID:
+                db_update_door_state(data[-1:] == '1')
+            if ack_data[:2] == MAN_OPEN_ID:
+                db_write_log('MANUAL TOGGLE')
+
+        # Received a tag id
+        elif frm_type == TAG_ID:
+            tag_data = controller.read(TAG_SIZE)
+
+            # Timeout on data read
+            if len(tag_data) < TAG_SIZE:
+                read_status = FRAME_TIMEOUT
+                return (read_status, write_queue)
+
+            # Successfully read tag data
+            db_write_log(tag_data)
+            auth = db_has_access(tag_data)
+            if auth:
+                write_queue.append(TOGGLE)
+            else:
+                write_queue.append(INVALID)
+
+    return (read_status, write_queue)
+
+def send_frames(controller, write_queue)
+    while write_queue:
+        controller.write(write_queue.pop(0))
 
 # Decorator for try/except-ing SQL
 def sql(f):

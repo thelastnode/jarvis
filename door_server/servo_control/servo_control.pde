@@ -5,8 +5,10 @@
 #define UNLOCK '2'
 #define INVALID '3'
 #define STATE_REQ '4'
+#define SET_LOCKED '5'
+#define SET_UNLOCKED '6'
 
-#define BAUD 9600
+#define BAUD 57600
 
 #define SERVO_ON_TIME 1000
 #define SERVO_RET_TIME 800
@@ -27,26 +29,28 @@
 
 #define LOCK_TOGGLE_PIN 4
 
-#define ACK_ID "ACK"
-#define ACK_PADDING "ACK_"
-#define MAN_OPEN_ID "MAN_"
+#define TAG_ID      "#T"
+#define ACK_ID      "#A"
+#define STATE_ID    "ST"
+#define MAN_OPEN_ID "MN"
 
 // For reading bits Wiegand style
-unsigned long tag_id = 0;
-unsigned int bit_count = 0;
+uint64_t tag_id = 0;
+// Number of bits received
+uint8_t bit_count = 0;
 
 // Timeout for reading from the reader
-unsigned long time_since_last_bit = 0;
+uint32_t time_since_last_bit = 0;
 
 // The command from the server
-unsigned char byte_in = 0;
+char byte_in = 0;
 
 // Current door state
 bool door_locked = false;
 
 // Manual door toggling
 // Debounce integrator
-unsigned char debounce_integ = 0;
+uint8_t debounce_integ = 0;
 // waiting for release
 bool wait_for_release = false;
 
@@ -73,7 +77,9 @@ void loop(){
 
 	// Send tag id
 	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
-		Serial.print(tag_id, HEX);
+		Serial.print(TAG_ID);
+		Serial.print((long)( tag_id      & 0xFFFFFFFF), HEX);
+		Serial.print((long)((tag_id>>32) & 0xFFFFFFFF), HEX);
 		bit_count = 0;
 		tag_id = 0;
 	}
@@ -109,7 +115,7 @@ void loop(){
 
 void send_ack() {
 	Serial.print(ACK_ID);
-	Serial.print(ACK_PADDING);
+	Serial.print(STATE_ID);
 	Serial.print(door_locked + '0', BYTE);
 }
 
@@ -157,6 +163,11 @@ void toggle_door() {
 	else {
 		lock_door();
 	}
+}
+
+void set_door_locked(bool locked) {
+	door_locked = locked;
+	digitalWrite(LOCKED_INDICATOR_PIN, door_locked);
 }
 
 void unlock_door() {
