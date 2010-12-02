@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import serial, re, os
-from time import sleep, gmtime, strftime
+from time import sleep, localtime, strftime
 
 # change for appropriate database 
 import MySQLdb as db
