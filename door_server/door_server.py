@@ -257,7 +257,7 @@ def handle_incoming_frames(controller):
 
                 #PRINT
                 print_timestamp()
-                print 'DATA door manually toggled'
+                print 'DATA door manually toggled. is_locked = %s'%str(ack_data[-1:] == '1')
 
         # Received a tag id
         elif frm_type == TAG_ID:
