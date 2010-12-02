@@ -107,7 +107,8 @@ def main():
             print 'DATA %d bytes in queue'%controller.inWaiting()
 
         # Handle incoming frames with a complete frame header
-        (frame_read_status, write_queue) = handle_incoming_frames(controller)
+        (frame_read_status, new_write_queue) = handle_incoming_frames(controller)
+        [write_queue.append(x) for x in new_write_queue]
 
         # Handle database queue
         [write_queue.append(x) for x in process_db_queue(controller)]
