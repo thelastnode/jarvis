@@ -242,11 +242,11 @@ def handle_incoming_frames(controller):
             # Successfully read data
             read_status = FRAME_RCV
             if ack_data[:2] == STATE_ID:
-                db_update_door_state(data[-1:] == '1')
+                db_update_door_state(ack_data[-1:] == '1')
 
                 #PRINT
                 print_timestamp()
-                print 'DATA door state updated. is_locked = %s'%str(data[-1:] == '1')
+                print 'DATA door state updated. is_locked = %s'%str(ack_data[-1:] == '1')
 
             if ack_data[:2] == MAN_OPEN_ID:
                 db_write_log('MANUAL TOGGLE')
