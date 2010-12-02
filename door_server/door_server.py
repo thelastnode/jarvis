@@ -110,7 +110,7 @@ def main():
             ack_timeout_count = 0
 
         # Command ack timed out or reading a whole frame timed out
-        if frame_read_status = FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
+        if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
             # Reset the connection
             controller.close();
             controller = setup_serial_connection(get_open_serial_port)
@@ -142,7 +142,7 @@ def main():
         # Don't hog all the processor time
         sleep(TIME_DELAY)
 
-def get_open_serial_port()
+def get_open_serial_port():
     ports = [x for x in os.listdir('/dev/') if re.search('ttyUSB\d+', x)]
     while not ports:
         sleep(PORT_TIME_DELAY)
@@ -150,7 +150,7 @@ def get_open_serial_port()
 
     return ports[0]
 
-def setup_serial_connection(interface)
+def setup_serial_connection(interface):
     controller = serial.Serial(interface, BAUD, timeout = TIMEOUT);
     full_frame_timeout_count = 0
 
@@ -161,7 +161,7 @@ def setup_serial_connection(interface)
 
     return controller
 
-def process_db_queue(controller)
+def process_db_queue(controller):
     write_queue = []
     while db_queue_items() > 0:
         # command is a string
@@ -169,7 +169,7 @@ def process_db_queue(controller)
         write_queue.append(str(command))
     return write_queue
 
-def handle_incoming_frames(controller)
+def handle_incoming_frames(controller):
     # Handle all waiting frames
     read_status = FRAME_NONE
     write_queue = []
@@ -188,7 +188,7 @@ def handle_incoming_frames(controller)
 
             # Successfully read data
             read_status = FRAME_RCV
-            if ack_data[:2] = STATE_ID:
+            if ack_data[:2] == STATE_ID:
                 db_update_door_state(data[-1:] == '1')
             if ack_data[:2] == MAN_OPEN_ID:
                 db_write_log('MANUAL TOGGLE')
@@ -212,7 +212,7 @@ def handle_incoming_frames(controller)
 
     return (read_status, write_queue)
 
-def send_frames(controller, write_queue)
+def send_frames(controller, write_queue):
     while write_queue:
         controller.write(write_queue.pop(0))
 
