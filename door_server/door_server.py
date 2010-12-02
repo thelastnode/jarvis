@@ -31,6 +31,7 @@ TIMEOUT = 5
 # Packet header size
 FRAME_HEAD_SIZE = 2
 
+# Sendable commands
 TOGGLE       = '0'
 LOCK         = '1'
 UNLOCK       = '2'
@@ -39,14 +40,18 @@ REQ_STATE    = '4'
 SET_LOCKED   = '5'
 SET_UNLOCKED = '6'
 
+# Frame ids
 TAG_ID      = '#T'
+
 ACK_ID      = '#A'
 MAN_OPEN_ID = 'MN'
 STATE_ID    = 'ST'
 
+# Frame sizes
 ACK_SIZE = 3
-TAG_SIZE = 16
+TAG_SIZE = 9
 
+# Timeouts
 FULL_FRAME_TIMEOUT = 12
 # 10 seconds to ack
 ACK_TIMEOUT = 1000
@@ -58,6 +63,7 @@ TIME_DELAY = 0.01
 # time delay for waiting for the serial port to come back
 PORT_TIME_DELAY = 3
 
+# Frame read return codes
 FRAME_NONE = 0
 FRAME_RCV = 1
 FRAME_TIMEOUT = 2
