@@ -207,9 +207,10 @@ def process_db_queue(controller):
         command = db_dequeue_command()
         write_queue.append(str(command))
 
-    #PRINT
-    print_timestamp()
-    print 'DB dequeued %d commands'%len(write_queue)
+	#PRINT
+	if write_queue:
+		print_timestamp()
+		print 'DB dequeued %d commands'%len(write_queue)
 
     return write_queue
 
