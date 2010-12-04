@@ -250,14 +250,14 @@ def handle_incoming_frames(controller):
 
                 #PRINT
                 print_timestamp()
-                print 'DATA door state updated. is_locked = %s'%str(ack_data[-1:] == '1')
+                print 'AUTH door state updated. is_locked = %s'%str(ack_data[-1:] == '1')
 
             if ack_data[:2] == MAN_OPEN_ID:
                 db_write_log('MANUAL TOGGLE')
 
                 #PRINT
                 print_timestamp()
-                print 'DATA door manually toggled. is_locked = %s'%str(ack_data[-1:] == '1')
+                print 'AUTH door manually toggled. is_locked = %s'%str(ack_data[-1:] == '1')
 
         # Received a tag id
         elif frm_type == TAG_ID:
@@ -285,14 +285,14 @@ def handle_incoming_frames(controller):
 
                 #PRINT
                 print_timestamp()
-                print 'DATA authorized tag id %s'%tag_data
+                print 'AUTH authorized tag id %s'%tag_data
 
             else:
                 write_queue.append(INVALID)
 
                 #PRINT
                 print_timestamp()
-                print 'DATA denied tag id %s'%tag_data
+                print 'AUTH denied tag id %s'%tag_data
 
     return (read_status, write_queue)
 
