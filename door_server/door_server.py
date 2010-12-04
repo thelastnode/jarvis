@@ -24,7 +24,7 @@ conn = db.connect(host=DB['host'], user=DB['user'],
                   passwd=DB['password'], db=DB['name'])
 
 # Low level config
-BAUD = 57600
+BAUD = 9600
 # Five seconds to read a full frame (minus 3 character header)
 TIMEOUT = 5
 # Packet header size
