@@ -8,7 +8,7 @@
 #define SET_LOCKED '5'
 #define SET_UNLOCKED '6'
 
-#define BAUD 57600
+#define BAUD 9600
 
 #define SERVO_ON_TIME 1000
 #define SERVO_RET_TIME 800
