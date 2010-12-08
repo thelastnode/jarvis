@@ -23,7 +23,8 @@
 #define SERVO_UNLOCK_HOME 90
 
 #define NUM_BITS 35
-#define BIT_TIMEOUT 50
+#define BIT_TIMEOUT 100
+#define PARTIAL_READ_TIMEOUT 1000
 
 #define LOCKED_INDICATOR_PIN 11
 
@@ -75,13 +76,15 @@ void loop(){
 		send_man_open();
 	}
 
-	// Send tag id
-	if (bit_count >= NUM_BITS && millis() - time_since_last_bit > BIT_TIMEOUT) {
-		Serial.print(TAG_ID);
-		Serial.print((long)( tag_id      & 0xFFFFFFFF), HEX);
-		Serial.print((long)((tag_id>>32) & 0xFFFFFFFF), HEX);
+	// Partial read timeout
+	if (millis() - time_since_last_bit > PARTIAL_READ_TIMEOUT && bit_count < NUM_BITS) {
 		bit_count = 0;
 		tag_id = 0;
+	}
+
+	// Send tag id
+	if (millis() - time_since_last_bit > BIT_TIMEOUT && bit_count >= NUM_BITS) {
+		send_tag();
 	}
 
 	// Interpret received command
@@ -111,6 +114,14 @@ void loop(){
 				break;
 		}
 	}
+}
+
+void send_tag() {
+	Serial.print(TAG_ID);
+	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
+	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
+	bit_count = 0;
+	tag_id = 0;
 }
 
 void send_ack() {
