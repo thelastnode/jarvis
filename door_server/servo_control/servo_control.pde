@@ -77,7 +77,7 @@ void loop(){
 	}
 
 	// Partial read timeout
-	if (millis() - time_since_last_bit > PARTIAL_READ_TIMEOUT && bit_count < NUM_BITS) {
+	if (bit_count > 0 && bit_count < NUM_BITS && millis() - time_since_last_bit > PARTIAL_READ_TIMEOUT ) {
 		bit_count = 0;
 		tag_id = 0;
 	}
@@ -118,8 +118,8 @@ void loop(){
 
 void send_tag() {
 	Serial.print(TAG_ID);
-	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
 	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
+	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
 	bit_count = 0;
 	tag_id = 0;
 }
