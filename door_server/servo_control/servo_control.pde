@@ -118,8 +118,8 @@ void loop(){
 
 void send_tag() {
 	Serial.print(TAG_ID);
-	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
 	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
+	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
 	bit_count = 0;
 	tag_id = 0;
 }
