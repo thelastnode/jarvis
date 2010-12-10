@@ -74,7 +74,9 @@ def main():
         try:
 			run_serv()
         except:
+			print_timestamp()
             print 'CONN connection lost, re-establishing'
+			sleep(PORT_TIME_DELAY)
 
 def run_serv():
 	# Timeout counters
