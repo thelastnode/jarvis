@@ -72,106 +72,106 @@ old_state = None
 def main():
     while True:
         try:
-			run_serv()
+            run_serv()
         except:
-			print_timestamp()
+            print_timestamp()
             print 'CONN connection lost, re-establishing'
-			sleep(PORT_TIME_DELAY)
+            sleep(PORT_TIME_DELAY)
 
 def run_serv():
-	# Timeout counters
-	full_frame_timeout_count = 0
-	ack_timeout_count = 0
-	ping_timeout_count = 0
+    # Timeout counters
+    full_frame_timeout_count = 0
+    ack_timeout_count = 0
+    ping_timeout_count = 0
 
-	write_queue = []
+    write_queue = []
 
-	# empty queue 
-	while db_queue_items() > 0:
-		db_dequeue_command()
+    # empty queue 
+    while db_queue_items() > 0:
+        db_dequeue_command()
 
-	controller = setup_serial_connection(get_open_serial_port())
+    controller = setup_serial_connection(get_open_serial_port())
 
-	while True:
-		# Timeout for the serial data. If it gets only partial data, it will 
-		# eventually clear the buffer, instead of leaving it there to
-		# mess up future reads
-		if controller.inWaiting() == 0:
-			full_frame_timeout_count = 0
+    while True:
+        # Timeout for the serial data. If it gets only partial data, it will 
+        # eventually clear the buffer, instead of leaving it there to
+        # mess up future reads
+        if controller.inWaiting() == 0:
+            full_frame_timeout_count = 0
 
-		# Only some data read
-		if controller.inWaiting() > 0 and controller.inWaiting() < FRAME_HEAD_SIZE:
-			full_frame_timeout_count += 1
+        # Only some data read
+        if controller.inWaiting() > 0 and controller.inWaiting() < FRAME_HEAD_SIZE:
+            full_frame_timeout_count += 1
 
-		# Partially received frame header timed out
-		if full_frame_timeout_count > FULL_FRAME_TIMEOUT:
-			#PRINT
-			print_timestamp()
-			print 'TIMEOUT partially read header discarded'
+        # Partially received frame header timed out
+        if full_frame_timeout_count > FULL_FRAME_TIMEOUT:
+            #PRINT
+            print_timestamp()
+            print 'TIMEOUT partially read header discarded'
 
-			full_frame_timeout_count = 0
-			controller.read(controller.inWaiting())
-			
-		#PRINT
-		if controller.inWaiting() > 0:
-			print_timestamp()
-			print 'DATA %d bytes in queue'%controller.inWaiting()
+            full_frame_timeout_count = 0
+            controller.read(controller.inWaiting())
+            
+        #PRINT
+        if controller.inWaiting() > 0:
+            print_timestamp()
+            print 'DATA %d bytes in queue'%controller.inWaiting()
 
-		# Handle incoming frames with a complete frame header
-		(frame_read_status, new_write_queue) = handle_incoming_frames(controller)
-		[write_queue.append(x) for x in new_write_queue]
+        # Handle incoming frames with a complete frame header
+        (frame_read_status, new_write_queue) = handle_incoming_frames(controller)
+        [write_queue.append(x) for x in new_write_queue]
 
-		# Handle database queue
-		[write_queue.append(x) for x in process_db_queue(controller)]
+        # Handle database queue
+        [write_queue.append(x) for x in process_db_queue(controller)]
 
-		# Successfully received an ack. Reset the timeout
-		if frame_read_status == FRAME_RCV:
-			#PRINT
-			print_timestamp()
-			print 'ACK received'
+        # Successfully received an ack. Reset the timeout
+        if frame_read_status == FRAME_RCV:
+            #PRINT
+            print_timestamp()
+            print 'ACK received'
 
-			ack_timeout_count = 0
+            ack_timeout_count = 0
 
-		# Command ack timed out or reading a whole frame timed out
-		if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
-			#PRINT
-			print_timestamp()
-			print 'CONN connection lost'
+        # Command ack timed out or reading a whole frame timed out
+        if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
+            #PRINT
+            print_timestamp()
+            print 'CONN connection lost'
 
-			# Reset the connection
-			controller.close();
-			controller = setup_serial_connection(get_open_serial_port)
+            # Reset the connection
+            controller.close();
+            controller = setup_serial_connection(get_open_serial_port)
 
-			# Reset the timeout counters
-			ack_timeout_count = 0
-			ping_timeout_count = 0
-			full_frame_timeout_count = 0
+            # Reset the timeout counters
+            ack_timeout_count = 0
+            ping_timeout_count = 0
+            full_frame_timeout_count = 0
 
 
-		# Write all the frames in the queue
-		if write_queue:
-			send_frames(controller, write_queue)
-			# If its zero, make it one. If it already started, don't change it
-			# The microcontroller should always have the last word
-			ack_timeout_count = max(ack_timeout_count, 1)
+        # Write all the frames in the queue
+        if write_queue:
+            send_frames(controller, write_queue)
+            # If its zero, make it one. If it already started, don't change it
+            # The microcontroller should always have the last word
+            ack_timeout_count = max(ack_timeout_count, 1)
 
-		# Waiting for ack?
-		if ack_timeout_count > 0:
-			ack_timeout_count += 1
+        # Waiting for ack?
+        if ack_timeout_count > 0:
+            ack_timeout_count += 1
 
-		# Send a ping if not already waiting for an ack
-		if ping_timeout_count > PING_TIMEOUT and not ack_timeout_count > 0:
-			#PRINT
-			print_timestamp()
-			print 'DATA ping sent'
+        # Send a ping if not already waiting for an ack
+        if ping_timeout_count > PING_TIMEOUT and not ack_timeout_count > 0:
+            #PRINT
+            print_timestamp()
+            print 'DATA ping sent'
 
-			write_queue.append(REQ_STATE)
-			ping_timeout_count = 0
+            write_queue.append(REQ_STATE)
+            ping_timeout_count = 0
 
-		ping_timeout_count += 1
+        ping_timeout_count += 1
 
-		# Don't hog all the processor time
-		sleep(TIME_DELAY)
+        # Don't hog all the processor time
+        sleep(TIME_DELAY)
 
 def print_timestamp():
     print strftime("[%a, %d %b %Y %H:%M:%S] ", localtime()),
