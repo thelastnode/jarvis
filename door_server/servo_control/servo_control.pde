@@ -27,6 +27,9 @@
 #define PARTIAL_READ_TIMEOUT 1000
 
 #define LOCKED_INDICATOR_PIN 11
+#define LIGHT_PULSE_MIN 20
+#define LIGHT_PULSE_MAX 255
+#define LIGHT_PULSE_DELAY_LIM 200
 
 #define LOCK_TOGGLE_PIN 4
 
@@ -58,18 +61,36 @@ bool wait_for_release = false;
 Servo servo_lock;
 Servo servo_unlock;
 
+uint8_t light_pulse = LIGHT_PULSE_MIN;
+uint8_t light_pulse_inc = 1;
+uint8_t light_pulse_delay = 1;
+
 void setup() {
 	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
 	attachInterrupt(1, count_one, FALLING);
 
 	pinMode(LOCKED_INDICATOR_PIN, OUTPUT);
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
 
 	pinMode(LOCK_TOGGLE_PIN, INPUT);
 }
 
 void loop(){
+	if (!door_locked) {
+		light_pulse_delay++;
+		if (light_pulse_delay == LIGHT_PULSE_DELAY_LIM) {
+			light_pulse_delay = 0;
+
+			light_pulse += light_pulse_inc;
+			analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
+			if (light_pulse >= LIGHT_PULSE_MAX)
+				light_pulse_inc = -1;
+			else if (light_pulse <= LIGHT_PULSE_MIN)
+				light_pulse_inc = 1;
+		}
+	}
+
 	// Check for manual lock toggle
 	if (button_toggled()) {
 		toggle_door();
@@ -182,7 +203,9 @@ void set_door_locked(bool locked) {
 }
 
 void unlock_door() {
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	light_pulse = LIGHT_PULSE_MIN;
+	analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
+
 	servo_lock.attach(SERVO_LOCK);
 	servo_lock.write(SERVO_LOCK_HOME);
 
