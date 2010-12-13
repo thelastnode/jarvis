@@ -68,6 +68,7 @@ FRAME_RCV = 1
 FRAME_TIMEOUT = 2
 
 old_state = None
+is_locked = 0
 
 def main():
     while True:
@@ -83,6 +84,7 @@ def run_serv():
     full_frame_timeout_count = 0
     ack_timeout_count = 0
     ping_timeout_count = 0
+    global is_locked
 
     write_queue = []
 
@@ -227,6 +229,7 @@ def process_db_queue(controller):
     return write_queue
 
 def handle_incoming_frames(controller):
+    global is_locked
     # Handle all waiting frames
     read_status = FRAME_NONE
     write_queue = []
@@ -255,18 +258,21 @@ def handle_incoming_frames(controller):
             # Successfully read data
             read_status = FRAME_RCV
             if ack_data[:2] == STATE_ID:
-                db_update_door_state(ack_data[-1:] == '1')
+                is_locked = ack_data[-1:] == '1'
+                db_update_door_state(is_locked)
 
                 #PRINT
                 print_timestamp()
-                print 'AUTH door state updated. is_locked = %s'%str(ack_data[-1:] == '1')
+                print 'AUTH door state updated. is_locked = %s'%str(is_locked)
 
             if ack_data[:2] == MAN_OPEN_ID:
+                is_locked = ack_data[-1:] == '1'
+                db_update_door_state(is_locked)
                 db_write_log('MANUAL TOGGLE')
 
                 #PRINT
                 print_timestamp()
-                print 'AUTH door manually toggled. is_locked = %s'%str(ack_data[-1:] == '1')
+                print 'AUTH door manually toggled. is_locked = %s'%str(is_locked)
 
         # Received a tag id
         elif frm_type == TAG_ID:
@@ -291,6 +297,10 @@ def handle_incoming_frames(controller):
             auth = db_has_access(tag_data)
             if auth:
                 write_queue.append(TOGGLE)
+                if is_locked:
+                    play_sound('sounds/access_granted.wav')
+                else:
+                    play_sound('sounds/goodbye.wav')
 
                 #PRINT
                 print_timestamp()
@@ -298,6 +308,7 @@ def handle_incoming_frames(controller):
 
             else:
                 write_queue.append(INVALID)
+                play_sound('sounds/access_denied.wav')
 
                 #PRINT
                 print_timestamp()
@@ -313,6 +324,10 @@ def send_frames(controller, write_queue):
 
     while write_queue:
         controller.write(write_queue.pop(0))
+
+def play_sound(filename):
+    os.system('mplayer -really-quiet %s 2> /dev/null &'%filename)
+
 
 # Decorator for try/except-ing SQL
 def sql(f):
