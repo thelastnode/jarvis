@@ -40,12 +40,12 @@
 #define END_FRAME	":$"
 
 // For reading bits Wiegand style
-uint64_t tag_id = 0;
+volatile uint64_t tag_id = 0;
 // Number of bits received
-uint8_t bit_count = 0;
+volatile uint8_t bit_count = 0;
 
 // Timeout for reading from the reader
-uint32_t time_since_last_bit = 0;
+volatile uint32_t time_since_last_bit = 0;
 
 // The command from the server
 char byte_in = 0;
