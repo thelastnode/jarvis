@@ -33,10 +33,11 @@
 
 #define LOCK_TOGGLE_PIN 4
 
-#define TAG_ID      "#T"
-#define ACK_ID      "#A"
-#define STATE_ID    "ST"
-#define MAN_OPEN_ID "MN"
+#define TAG_ID      "#T:"
+#define ACK_ID      "#A:"
+#define STATE_ID    "ST:"
+#define MAN_OPEN_ID "MN:"
+#define END_FRAME	":$"
 
 // For reading bits Wiegand style
 uint64_t tag_id = 0;
@@ -141,6 +142,7 @@ void send_tag() {
 	Serial.print(TAG_ID);
 	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
 	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
+	Serial.print(END_FRAME);
 	bit_count = 0;
 	tag_id = 0;
 }
@@ -149,12 +151,14 @@ void send_ack() {
 	Serial.print(ACK_ID);
 	Serial.print(STATE_ID);
 	Serial.print(door_locked + '0', BYTE);
+	Serial.print(END_FRAME);
 }
 
 void send_man_open() {
 	Serial.print(ACK_ID);
 	Serial.print(MAN_OPEN_ID);
 	Serial.print(door_locked + '0', BYTE);
+	Serial.print(END_FRAME);
 }
 
 // Debounce the manual lock toggle button and return true if the 

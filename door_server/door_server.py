@@ -27,8 +27,6 @@ conn = db.connect(host=DB['host'], user=DB['user'],
 BAUD = 9600
 # Five seconds to read a full frame (minus 3 character header)
 TIMEOUT = 5
-# Packet header size
-FRAME_HEAD_SIZE = 2
 
 # Sendable commands
 TOGGLE       = '0'
@@ -45,13 +43,10 @@ TAG_ID      = '#T'
 ACK_ID      = '#A'
 MAN_OPEN_ID = 'MN'
 STATE_ID    = 'ST'
+END_FRAME   = '$'
 
-# Frame sizes
-ACK_SIZE = 3
-TAG_SIZE = 9
+FRM_DELIM   = ':'
 
-# Timeouts
-FULL_FRAME_TIMEOUT = 12
 # 10 seconds to ack
 ACK_TIMEOUT = 1000
 # 30 seconds to respond to a ping
@@ -84,7 +79,6 @@ def run_serv():
     full_frame_timeout_count = 0
     ack_timeout_count = 0
     ping_timeout_count = 0
-    global is_locked
 
     write_queue = []
 
@@ -95,30 +89,6 @@ def run_serv():
     controller = setup_serial_connection(get_open_serial_port())
 
     while True:
-        # Timeout for the serial data. If it gets only partial data, it will 
-        # eventually clear the buffer, instead of leaving it there to
-        # mess up future reads
-        if controller.inWaiting() == 0:
-            full_frame_timeout_count = 0
-
-        # Only some data read
-        if controller.inWaiting() > 0 and controller.inWaiting() < FRAME_HEAD_SIZE:
-            full_frame_timeout_count += 1
-
-        # Partially received frame header timed out
-        if full_frame_timeout_count > FULL_FRAME_TIMEOUT:
-            #PRINT
-            print_timestamp()
-            print 'TIMEOUT partially read header discarded'
-
-            full_frame_timeout_count = 0
-            controller.read(controller.inWaiting())
-            
-        #PRINT
-        if controller.inWaiting() > 0:
-            print_timestamp()
-            print 'DATA %d bytes in queue'%controller.inWaiting()
-
         # Handle incoming frames with a complete frame header
         (frame_read_status, new_write_queue) = handle_incoming_frames(controller)
         [write_queue.append(x) for x in new_write_queue]
@@ -233,40 +203,41 @@ def handle_incoming_frames(controller):
     # Handle all waiting frames
     read_status = FRAME_NONE
     write_queue = []
-    while controller.inWaiting() >= FRAME_HEAD_SIZE:
+    while controller.inWaiting():
 
-        frm_type = controller.read(FRAME_HEAD_SIZE)
+        frame_str = [controller.read()]
+        while not frame[-1] == END_FRAME:
+            char = controller.read()
+            # Timeout on whole frame
+            if char == '':
+                read_status = FRAME_TIMEOUT
+                #PRINT
+                print_timestamp()
+                print 'CONN frame read timed out'
+                return (read_status, write_queue)
+
+            frame_str.append(controller.read())
+
+        frame = ''.join(frame_str).split(':')
 
         # Received an ack
-        if frm_type == ACK_ID:
-            ack_data = controller.read(ACK_SIZE)
-
+        if frame[0] == ACK_ID:
             #PRINT
             print_timestamp()
             print 'DATA received ack frame'
 
-            # Timeout on data read
-            if len(ack_data) < ACK_SIZE:
-                read_status = FRAME_TIMEOUT
-
-                #PRINT
-                print_timestamp()
-                print 'CONN frame read timed out'
-
-                return (read_status, write_queue)
-
-            # Successfully read data
+            # Successfully received response
             read_status = FRAME_RCV
-            if ack_data[:2] == STATE_ID:
-                is_locked = ack_data[-1:] == '1'
+            if frame[1] == STATE_ID:
+                is_locked = frame[2] == '1'
                 db_update_door_state(is_locked)
 
                 #PRINT
                 print_timestamp()
                 print 'AUTH door state updated. is_locked = %s'%str(is_locked)
 
-            if ack_data[:2] == MAN_OPEN_ID:
-                is_locked = ack_data[-1:] == '1'
+            if frame[1] == MAN_OPEN_ID:
+                is_locked = frame[2] == '1'
                 db_update_door_state(is_locked)
                 db_write_log('MANUAL TOGGLE')
 
@@ -275,24 +246,13 @@ def handle_incoming_frames(controller):
                 print 'AUTH door manually toggled. is_locked = %s'%str(is_locked)
 
         # Received a tag id
-        elif frm_type == TAG_ID:
-            tag_data = controller.read(TAG_SIZE)
-
+        elif frame[0] == TAG_ID:
             #PRINT
             print_timestamp()
             print 'DATA received tag id frame'
 
-            # Timeout on data read
-            if len(tag_data) < TAG_SIZE:
-                read_status = FRAME_TIMEOUT
-
-                #PRINT
-                print_timestamp()
-                print 'CONN frame read timed out'
-
-                return (read_status, write_queue)
-
             # Successfully read tag data
+            tag_data = frame[1]
             db_write_log(tag_data)
             auth = db_has_access(tag_data)
             if auth:
