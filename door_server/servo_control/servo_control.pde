@@ -27,9 +27,9 @@
 #define PARTIAL_READ_TIMEOUT 1000
 
 #define LOCKED_INDICATOR_PIN 11
-#define LIGHT_PULSE_MIN 20
-#define LIGHT_PULSE_MAX 255
-#define LIGHT_PULSE_DELAY_LIM 200
+#define LIGHT_PULSE_MIN 5
+#define LIGHT_PULSE_MAX 30
+#define LIGHT_PULSE_DELAY_LIM 1024
 
 #define LOCK_TOGGLE_PIN 4
 
@@ -63,7 +63,7 @@ Servo servo_unlock;
 
 uint8_t light_pulse = LIGHT_PULSE_MIN;
 uint8_t light_pulse_inc = 1;
-uint8_t light_pulse_delay = 1;
+uint16_t light_pulse_delay = 1;
 
 void setup() {
 	Serial.begin(BAUD);
