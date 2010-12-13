@@ -27,21 +27,25 @@
 #define PARTIAL_READ_TIMEOUT 1000
 
 #define LOCKED_INDICATOR_PIN 11
+#define LIGHT_PULSE_MIN 5
+#define LIGHT_PULSE_MAX 30
+#define LIGHT_PULSE_DELAY_LIM 1024
 
 #define LOCK_TOGGLE_PIN 4
 
-#define TAG_ID      "#T"
-#define ACK_ID      "#A"
-#define STATE_ID    "ST"
-#define MAN_OPEN_ID "MN"
+#define TAG_ID      "#T:"
+#define ACK_ID      "#A:"
+#define STATE_ID    "ST:"
+#define MAN_OPEN_ID "MN:"
+#define END_FRAME	":$"
 
 // For reading bits Wiegand style
-uint64_t tag_id = 0;
+volatile uint64_t tag_id = 0;
 // Number of bits received
-uint8_t bit_count = 0;
+volatile uint8_t bit_count = 0;
 
 // Timeout for reading from the reader
-uint32_t time_since_last_bit = 0;
+volatile uint32_t time_since_last_bit = 0;
 
 // The command from the server
 char byte_in = 0;
@@ -58,18 +62,36 @@ bool wait_for_release = false;
 Servo servo_lock;
 Servo servo_unlock;
 
+uint8_t light_pulse = LIGHT_PULSE_MIN;
+uint8_t light_pulse_inc = 1;
+uint16_t light_pulse_delay = 1;
+
 void setup() {
 	Serial.begin(BAUD);
 	attachInterrupt(0, count_zero, FALLING);
 	attachInterrupt(1, count_one, FALLING);
 
 	pinMode(LOCKED_INDICATOR_PIN, OUTPUT);
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
 
 	pinMode(LOCK_TOGGLE_PIN, INPUT);
 }
 
 void loop(){
+	if (!door_locked) {
+		light_pulse_delay++;
+		if (light_pulse_delay == LIGHT_PULSE_DELAY_LIM) {
+			light_pulse_delay = 0;
+
+			light_pulse += light_pulse_inc;
+			analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
+			if (light_pulse >= LIGHT_PULSE_MAX)
+				light_pulse_inc = -1;
+			else if (light_pulse <= LIGHT_PULSE_MIN)
+				light_pulse_inc = 1;
+		}
+	}
+
 	// Check for manual lock toggle
 	if (button_toggled()) {
 		toggle_door();
@@ -120,6 +142,7 @@ void send_tag() {
 	Serial.print(TAG_ID);
 	Serial.print((unsigned long)((tag_id>>32) & 0xFFFFFFFF), HEX);
 	Serial.print((unsigned long)( tag_id      & 0xFFFFFFFF), HEX);
+	Serial.print(END_FRAME);
 	bit_count = 0;
 	tag_id = 0;
 }
@@ -128,12 +151,14 @@ void send_ack() {
 	Serial.print(ACK_ID);
 	Serial.print(STATE_ID);
 	Serial.print(door_locked + '0', BYTE);
+	Serial.print(END_FRAME);
 }
 
 void send_man_open() {
 	Serial.print(ACK_ID);
 	Serial.print(MAN_OPEN_ID);
 	Serial.print(door_locked + '0', BYTE);
+	Serial.print(END_FRAME);
 }
 
 // Debounce the manual lock toggle button and return true if the 
@@ -182,7 +207,9 @@ void set_door_locked(bool locked) {
 }
 
 void unlock_door() {
-	digitalWrite(LOCKED_INDICATOR_PIN, LOW);
+	light_pulse = LIGHT_PULSE_MIN;
+	analogWrite(LOCKED_INDICATOR_PIN, light_pulse);
+
 	servo_lock.attach(SERVO_LOCK);
 	servo_lock.write(SERVO_LOCK_HOME);
 
