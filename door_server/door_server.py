@@ -206,7 +206,7 @@ def handle_incoming_frames(controller):
     while controller.inWaiting():
 
         frame_str = [controller.read()]
-        while not frame[-1] == END_FRAME:
+        while not frame_str[-1] == END_FRAME:
             char = controller.read()
             # Timeout on whole frame
             if char == '':
