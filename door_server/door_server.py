@@ -216,7 +216,7 @@ def handle_incoming_frames(controller):
                 print 'CONN frame read timed out'
                 return (read_status, write_queue)
 
-            frame_str.append(controller.read())
+            frame_str.append(char)
 
         frame = ''.join(frame_str).split(':')
 
