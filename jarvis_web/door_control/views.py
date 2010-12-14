@@ -4,7 +4,7 @@ from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, redirect
 
 from jarvis_web.door_control.decorators import render_to
 from jarvis_web.door_control.forms import LoginForm
@@ -16,6 +16,7 @@ def home(request):
     if request.method == 'POST':
         # toggle door state
         QueueEntry(command=QueueEntry.COMMAND_CHOICES[0][0]).save()
+        return redirect('home')
     recent = DoorState.objects.order_by('-creation_time')[0]
     return {'is_locked': recent.is_locked }
 

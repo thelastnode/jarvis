@@ -13,7 +13,7 @@
 </ul>
 {% endif %}
 
-<form action="{% url login %}" method="POST">
+<form action="{% url login %}" method="post">
     {% if form.errors %}
     <ul>
     {% for error in form.errors %}
@@ -23,7 +23,9 @@
     {% endif %}
 
     {% csrf_token %}
+    <p>
     {{ form.as_p }}
+    </p>
     <input type="submit" value="Login" />
 </form>
 {% endblock %}
