@@ -37,7 +37,7 @@ REQ_STATE    = '4'
 
 # Frame ids
 TAG_ID      = '#T'
-LOCK_ID    = '#S'
+STATE_ID    = '#S'
 LOCK_ID    = 'LK'
 MAN_OPEN_ID = 'MN'
 AJAR_ID     = 'AJ'
