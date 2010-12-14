@@ -34,21 +34,19 @@ LOCK         = '1'
 UNLOCK       = '2'
 INVALID      = '3'
 REQ_STATE    = '4'
-SET_LOCKED   = '5'
-SET_UNLOCKED = '6'
 
 # Frame ids
 TAG_ID      = '#T'
-
-ACK_ID      = '#A'
+LOCK_ID    = '#S'
+LOCK_ID    = 'LK'
 MAN_OPEN_ID = 'MN'
-STATE_ID    = 'ST'
+AJAR_ID     = 'AJ'
 END_FRAME   = '$'
 
 FRM_DELIM   = ':'
 
 # 10 seconds to ack
-ACK_TIMEOUT = 1000
+STATE_TIMEOUT = 1000
 # 30 seconds to respond to a ping
 PING_TIMEOUT = 3000
 
@@ -64,6 +62,7 @@ FRAME_TIMEOUT = 2
 
 old_state = None
 is_locked = 0
+is_open = 0
 
 def main():
     while True:
@@ -100,12 +99,12 @@ def run_serv():
         if frame_read_status == FRAME_RCV:
             #PRINT
             print_timestamp()
-            print 'ACK received'
+            print 'STATE received'
 
             ack_timeout_count = 0
 
         # Command ack timed out or reading a whole frame timed out
-        if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > ACK_TIMEOUT:
+        if frame_read_status == FRAME_TIMEOUT or ack_timeout_count > STATE_TIMEOUT:
             #PRINT
             print_timestamp()
             print 'CONN connection lost'
@@ -199,7 +198,7 @@ def process_db_queue(controller):
     return write_queue
 
 def handle_incoming_frames(controller):
-    global is_locked
+    global is_locked, is_open
     # Handle all waiting frames
     read_status = FRAME_NONE
     write_queue = []
@@ -221,29 +220,36 @@ def handle_incoming_frames(controller):
         frame = ''.join(frame_str).split(':')
 
         # Received an ack
-        if frame[0] == ACK_ID:
+        if frame[0] == STATE_ID:
             #PRINT
             print_timestamp()
             print 'DATA received ack frame'
 
             # Successfully received response
             read_status = FRAME_RCV
-            if frame[1] == STATE_ID:
-                is_locked = frame[2] == '1'
-                db_update_door_state(is_locked)
+            for i in range(1, len(frame), 2):
+                if frame[i] == LOCK_ID:
+                    is_locked = frame[i+1] == '1'
+                    db_update_door_state(is_locked)
 
-                #PRINT
-                print_timestamp()
-                print 'AUTH door state updated. is_locked = %s'%str(is_locked)
+                    #PRINT
+                    print_timestamp()
+                    print 'AUTH door state updated. is_locked = %s'%str(is_locked)
 
-            if frame[1] == MAN_OPEN_ID:
-                is_locked = frame[2] == '1'
-                db_update_door_state(is_locked)
-                db_write_log('MANUAL TOGGLE')
+                if frame[i] == MAN_OPEN_ID:
+                    is_locked = frame[i+1] == '0'
+                    db_write_log('MANUAL TOGGLE')
 
-                #PRINT
-                print_timestamp()
-                print 'AUTH door manually toggled. is_locked = %s'%str(is_locked)
+                    #PRINT
+                    print_timestamp()
+                    print 'AUTH door manually toggled. expected is_locked = %s'%str(is_locked)
+
+                if frame[i] == AJAR_ID:
+                    is_open = frame[i+1] == '1'
+
+                    #PRINT
+                    print_timestamp()
+                    print 'AUTH door opened/closed. is_open = %s'%str(is_open)
 
         # Received a tag id
         elif frame[0] == TAG_ID:
