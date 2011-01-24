@@ -35,7 +35,6 @@ void start_unlock() {
 void servo_machine() {
     switch (servo_at) {
     case act_l:
-		reset_digital_light();
         servo_unlock.attach(SERVO_UNLOCK);
         servo_unlock.write(SERVO_UNLOCK_HOME);
 
@@ -47,7 +46,6 @@ void servo_machine() {
         break;
 
     case act_u:
-		reset_analog_light();
         servo_lock.attach(SERVO_LOCK);
         servo_lock.write(SERVO_LOCK_HOME);
 
@@ -59,7 +57,7 @@ void servo_machine() {
         break;
 
     case ret_l:
-		if (millis() - last_trigger >= SERVO_ON_TIME) {
+		if (abs(millis() - last_trigger) >= SERVO_ON_TIME) {
 			servo_lock.write(SERVO_LOCK_HOME);
 			servo_at = ended;
 			last_trigger = millis();
@@ -67,7 +65,7 @@ void servo_machine() {
         break;
 
     case ret_u:
-		if (millis() - last_trigger >= SERVO_ON_TIME) {
+		if (abs(millis() - last_trigger) >= SERVO_ON_TIME) {
 			servo_unlock.write(SERVO_UNLOCK_HOME);
 			servo_at = ended;
 			last_trigger = millis();
@@ -75,7 +73,7 @@ void servo_machine() {
         break;
 
     case ended:
-		if (millis() - last_trigger >= SERVO_RET_TIME) {
+		if (abs(millis() - last_trigger) >= SERVO_RET_TIME) {
 			servo_lock.detach();
 			servo_unlock.detach();
 			servo_at = holding;

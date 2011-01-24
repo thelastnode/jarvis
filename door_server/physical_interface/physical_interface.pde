@@ -66,8 +66,12 @@ void loop() {
 	servo_machine();
 	blinky_machine();
 
-	if (!is_locked)
-		pulse_light();
+	if (!is_blinking()) {
+		if (!is_locked)
+			pulse_light();
+		else
+			reset_digital_light();
+	}
 
 	// update debouncers
 	for (int i = 0; i < NUM_DEBOUNCE_PINS; i++) {
@@ -85,13 +89,13 @@ void loop() {
 	}
 
 	// Partial read timeout
-	if (bit_count > 0 && bit_count < NUM_BITS && millis() - time_since_last_bit > PARTIAL_READ_TIMEOUT ) {
+	if (bit_count > 0 && bit_count < NUM_BITS && abs(millis() - time_since_last_bit) > PARTIAL_READ_TIMEOUT ) {
 		bit_count = 0;
 		tag_id = 0;
 	}
 
 	// Send tag id
-	if (millis() - time_since_last_bit > BIT_TIMEOUT && bit_count >= NUM_BITS) {
+	if (abs(millis() - time_since_last_bit) > BIT_TIMEOUT && bit_count >= NUM_BITS) {
 		send_tag();
 	}
 
