@@ -57,7 +57,7 @@ void servo_machine() {
         break;
 
     case ret_l:
-		if (abs(millis() - last_trigger) >= SERVO_ON_TIME) {
+		if (millis() - last_trigger >= SERVO_ON_TIME) {
 			servo_lock.write(SERVO_LOCK_HOME);
 			servo_at = ended;
 			last_trigger = millis();
@@ -65,7 +65,7 @@ void servo_machine() {
         break;
 
     case ret_u:
-		if (abs(millis() - last_trigger) >= SERVO_ON_TIME) {
+		if (millis() - last_trigger >= SERVO_ON_TIME) {
 			servo_unlock.write(SERVO_UNLOCK_HOME);
 			servo_at = ended;
 			last_trigger = millis();
@@ -73,7 +73,7 @@ void servo_machine() {
         break;
 
     case ended:
-		if (abs(millis() - last_trigger) >= SERVO_RET_TIME) {
+		if (millis() - last_trigger >= SERVO_RET_TIME) {
 			servo_lock.detach();
 			servo_unlock.detach();
 			servo_at = holding;
