@@ -16,10 +16,6 @@
 #define LOCK_PIN 5
 #define AJAR_PIN 6
 
-#define MAN_OPEN_B 0
-#define LOCK_B 1
-#define AJAR_B 2
-
 // 3 pins to debounce
 #define NUM_DEBOUNCE_PINS 3
 
@@ -44,7 +40,9 @@ bool is_ajar = false;
 
 char byte_in;
 
-Bounce bouncers[NUM_DEBOUNCE_PINS];
+Bounce bounce_man_open = Bounce(MAN_OPEN_PIN, 5);
+Bounce bounce_lock_b = Bounce(LOCK_PIN, 5);
+Bounce bounce_ajar_b = Bounce(AJAR_PIN, 5);
 
 void setup() {
 	Serial.begin(BAUD);
@@ -56,31 +54,31 @@ void setup() {
 	pinMode(MAN_OPEN_PIN, INPUT);
 	pinMode(LOCK_PIN, INPUT);
 	pinMode(AJAR_PIN, INPUT);
-
-	bouncers[MAN_OPEN_B] = Bounce(MAN_OPEN_PIN, 5);
-	bouncers[LOCK_B] = Bounce(LOCK_PIN, 5);
-	bouncers[AJAR_B] = Bounce(AJAR_PIN, 5);
 }
 
 void loop() {
 	servo_machine();
 	blinky_machine();
 
-	if (!is_locked)
-		pulse_light();
-
-	// update debouncers
-	for (int i = 0; i < NUM_DEBOUNCE_PINS; i++) {
-		bouncers[i].update();
+	if (!is_blinking()) {
+		if (!is_locked)
+			pulse_light();
+		else
+			reset_digital_light();
 	}
 
-	if (bouncers[LOCK_B].read() != is_locked) {
-		is_locked = bouncers[LOCK_B].read();
+	// update debouncers
+	bounce_man_open.update();
+	bounce_lock_b.update();
+	bounce_ajar_b.update();
+
+	if (bounce_lock_b.read() != is_locked) {
+		is_locked = bounce_lock_b.read();
 		send_lock();
 	}
 
-	if (bouncers[AJAR_B].read() != is_ajar) {
-		is_ajar = bouncers[AJAR_B].read();
+	if (bounce_ajar_b.read() != is_ajar) {
+		is_ajar = bounce_ajar_b.read();
 		send_door();
 	}
 
@@ -88,6 +86,7 @@ void loop() {
 	if (bit_count > 0 && bit_count < NUM_BITS && millis() - time_since_last_bit > PARTIAL_READ_TIMEOUT ) {
 		bit_count = 0;
 		tag_id = 0;
+		time_since_last_bit = millis();
 	}
 
 	// Send tag id
@@ -120,7 +119,7 @@ void loop() {
 			}
 		}
 
-		if (bouncers[MAN_OPEN_B].risingEdge()) {
+		if (bounce_man_open.risingEdge()) {
 			toggle_door();
 			send_man_open();
 		}

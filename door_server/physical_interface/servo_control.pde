@@ -35,7 +35,6 @@ void start_unlock() {
 void servo_machine() {
     switch (servo_at) {
     case act_l:
-		reset_digital_light();
         servo_unlock.attach(SERVO_UNLOCK);
         servo_unlock.write(SERVO_UNLOCK_HOME);
 
@@ -47,7 +46,6 @@ void servo_machine() {
         break;
 
     case act_u:
-		reset_analog_light();
         servo_lock.attach(SERVO_LOCK);
         servo_lock.write(SERVO_LOCK_HOME);
 

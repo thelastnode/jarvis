@@ -245,9 +245,9 @@ def handle_incoming_frames(controller):
                     print 'AUTH door manually toggled. expected is_locked = %s'%str(is_locked)
 
                 if frame[i] == AJAR_ID:
-                    if not is_open = frame[i+1] == '1':
+                    if not is_open == (frame[i+1] == '1'):
                         play_sound('sounds/airlock_hiss.wav')
-                    is_open = frame[i+1] == '1':
+                    is_open = frame[i+1] == '1'
 
                     #PRINT
                     print_timestamp()
