@@ -2,6 +2,7 @@
 
 import serial, re, os
 from time import sleep, localtime, strftime
+from random import randint
 
 # change for appropriate database 
 import MySQLdb as db
@@ -198,7 +199,7 @@ def process_db_queue(controller):
     return write_queue
 
 def handle_incoming_frames(controller):
-    global is_locked, is_open
+    global is_locked, is_open, fun_timer
     # Handle all waiting frames
     read_status = FRAME_NONE
     write_queue = []
@@ -264,10 +265,14 @@ def handle_incoming_frames(controller):
             db_write_log(tag_data)
             auth = db_has_access(tag_data)
             if auth:
-                write_queue.append(TOGGLE)
                 if is_locked:
-                    play_sound('sounds/access_granted.wav')
+                    if randint(1,50) == 20:
+                        play_sound('sounds/cantdo.wav')
+                    else:
+                        write_queue.append(UNLOCK)
+                        play_sound('sounds/access_granted.wav')
                 else:
+                    write_queue.append(LOCK)
                     play_sound('sounds/goodbye.wav')
 
                 #PRINT
