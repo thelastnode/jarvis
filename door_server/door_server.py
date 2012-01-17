@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import serial, re, os
+import serial, re, os, shutil
 from time import sleep, localtime, strftime
 from random import randint
 
@@ -65,7 +65,10 @@ old_state = None
 is_locked = 0
 is_open = 0
 
+SHM_HISS_FILE = '/dev/shm/jarvis/airlock_hiss.wav'
+
 def main():
+	shutil.copy('sounds/airlock_hiss.wav', SHM_HISS_FILE)
     while True:
         try:
             run_serv()
@@ -247,7 +250,7 @@ def handle_incoming_frames(controller):
 
                 if frame[i] == AJAR_ID:
                     if not is_open == (frame[i+1] == '1'):
-                        play_sound('sounds/airlock_hiss.wav')
+                        play_sound(SHM_HISS_FILE)
                     is_open = frame[i+1] == '1'
 
                     #PRINT
