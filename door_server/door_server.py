@@ -65,7 +65,7 @@ old_state = None
 is_locked = 0
 is_open = 0
 
-SHM_HISS_FILE = '/dev/shm/jarvis/airlock_hiss.wav'
+SHM_HISS_FILE = '/dev/shm/airlock_hiss.wav'
 
 def main():
     shutil.copy('sounds/airlock_hiss.wav', SHM_HISS_FILE)
